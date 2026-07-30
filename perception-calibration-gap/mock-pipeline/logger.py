@@ -98,8 +98,22 @@ class TrialRecord:
     timing_per_step: Optional[List[float]] = None
     true_visibility_per_step: Optional[List[float]] = None
 
-    # --- EXTENSION: anticipated collaborator fields (dual-signal + explanation layer, per SCHEMA.md Section 3) ---
-    prg_edge_error: Optional[float] = None
+    # --- EXTENSION: collaborator's real interface, per SCHEMA.md Revision 3 Section 3a/3b ---
+
+    # prg_edge_error (single scalar) replaced -- a trial's target can have >1 adjacent
+    # object; collaborator's own recommendation was to log all target-adjacent pairs,
+    # not pre-select one "the" neighbor.
+
+    prg_edges: Optional[List[dict]] = None      # list of per-edge dicts (Section 3b shape),
+                                            # or [] if target has no adjacent object this
+                                            # frame -- valid, not an error
+
+    prg_is_stub: Optional[bool] = None          # True if prg_edges came from the seeded stub
+                                            # (config flag, missing camera_intrinsics, or an
+                                            # exception in the real chain)
+
+    prg_error_note: Optional[str] = None        # populated only if the real chain raised
+
     dominant_deferral_signal: Optional[str] = None
     voice_command_text: Optional[str] = None
     grounding_confidence: Optional[float] = None
@@ -215,5 +229,48 @@ if __name__ == "__main__":
     assert loaded[0]["gate_fired"] is True
     assert loaded[0]["Gap_after_fusion"] == 0.09
     print("Extension fields round-trip OK:", loaded[0])
+
+    # New: confirm prg_edges (list[dict]) round-trips correctly through JSON,
+    # and that a stub trial vs. a real-chain trial are distinguishable on load.
+
+    r3 = TrialRecord(
+        trial_id=3,
+        session_id=0,
+        object_id="purse",
+        session_baseline_failure_rate=0.05,
+        measured_true_visibility=0.6,
+        true_occlusion=0.4,
+        clutter_count=1,
+        perceived_visibility_initial=0.5,
+        Gap_initial=0.1,
+        Gap_max=0.1,
+        Gap_slope=0.0,
+        failure=0,
+        camera_pose_variant="front_0deg",
+
+        prg_edges=[{
+            "neighbor_name": "glass",
+            "relation_prediction": "Contact",
+            "relation_confidence": 0.82,
+            "prg_edge_error": 0.23,
+            "geometric_feature_vector": {
+                "boundary_sharpness": 0.4
+            },
+            "mask_is_bbox_placeholder": True,
+        }],
+        prg_is_stub=False,
+        prg_error_note=None,
+    )
+
+    logger4 = TrialLogger("mock-pipeline/data/test_trials4.jsonl")
+    logger4.append_trial(r3)
+
+    loaded4 = logger4.load_trials()
+
+    assert loaded4[0]["prg_edges"][0]["neighbor_name"] == "glass"
+    assert loaded4[0]["prg_is_stub"] is False
+
+    print("prg_edges round-trip OK:", loaded4[0]["prg_edges"])
+
 
     print("\nAll logger.py self-tests passed.")

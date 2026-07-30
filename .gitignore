@@ -1,6 +1,5 @@
 # =========================
 # Python
-# =========================
 __pycache__/
 *.py[cod]
 *.so
@@ -8,50 +7,91 @@ __pycache__/
 .mypy_cache/
 .ipynb_checkpoints/
 
-# =========================
 # Virtual environments
-# =========================
 vla_env/
 perception_env/
 venv/
 .venv/
-
-# =========================
 # VS Code / IDE
-# =========================
 .vscode/
 .idea/
-
-# =========================
 # OS files
-# =========================
 .DS_Store
 Thumbs.db
-
-# =========================
 # ROS build outputs
-# =========================
 **/build/
 **/install/
 **/log/
-
-# =========================
 # Runtime outputs
-# =========================
 **/runs/
 *.log
-
-# =========================
 # Large generated data
-# =========================
 **/generated_markers/
 **/mock-pipeline/data/
 **/mock-pipeline/exploratory_day6/
-
-# =========================
 # Ignore projects not part of this repo
-# =========================
 ros2_ws/
 so101-ros-physical-ai/
-
 get-pip.py
+
+# ============================================================
+# ============================================================
+*.pyo
+*.pyd
+.ruff_cache/
+env/
+ENV/
+# IDE / OS
+*.swp
+*.swo
+# Logs / temporary files
+*.tmp
+*.temp
+*.bak
+day1_logs/
+debug/
+# Model checkpoints / large weights
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+*.onnx
+# Generated depth / RGB / point-cloud outputs
+depth_maps/
+predicted_depth/
+rgb_images/
+gz_test/
+*.npy
+*.npz
+*.pcd
+*.ply
+# Generated experiment / evaluation outputs
+grasp_results/
+results/
+audits/
+corruption/
+# Generated masks
+boundary_masks/
+ground_truth/
+# Relation classifier generated artefacts
+relation_classifier/outputs/
+relation_classifier/data/_internal/
+# Generated validation/debug CSVs
+relation_classifier/data/pipeline_validation_*.csv
+relation_classifier/data/spot_check_sample.csv
+# Generated intermediate comparison/contact files
+relation_classifier/data/*_pose_delta.csv
+relation_classifier/data/*_gazebo_contacts.csv
+relation_classifier/data/flagged_objects.csv
+relation_classifier/data/heuristic_vs_gazebo_comparison*.csv
+# Duplicate / backup worlds and scripts
+scripts_backup/
+worlds_backup/
+worlds_backup_before_resolution*/
+worlds_basic/
+worlds_dynamic_with_contact*/
+worlds_old/
+worlds_with_contact_sensors/
+# Miscellaneous runtime artefacts
+*.pid
+*.lock

@@ -1,0 +1,106 @@
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# ============================================================
+# IDE / OS
+# ============================================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# ============================================================
+# Logs / temporary files
+# ============================================================
+*.log
+*.tmp
+*.temp
+*.bak
+
+day1_logs/
+debug/
+
+# ============================================================
+# Model checkpoints / large weights
+# ============================================================
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+*.onnx
+
+# ============================================================
+# Generated depth / RGB / point-cloud outputs
+# ============================================================
+depth_maps/
+predicted_depth/
+rgb_images/
+gz_test/
+
+*.npy
+*.npz
+*.pcd
+*.ply
+
+# ============================================================
+# Generated experiment / evaluation outputs
+# ============================================================
+grasp_results/
+results/
+audits/
+corruption/
+
+# ============================================================
+# Generated masks
+# ============================================================
+boundary_masks/
+ground_truth/
+
+# ============================================================
+# Relation classifier generated artefacts
+# ============================================================
+relation_classifier/outputs/
+relation_classifier/data/_internal/
+
+# Generated validation/debug CSVs
+relation_classifier/data/pipeline_validation_*.csv
+relation_classifier/data/spot_check_sample.csv
+
+# Generated intermediate comparison/contact files
+relation_classifier/data/*_pose_delta.csv
+relation_classifier/data/*_gazebo_contacts.csv
+relation_classifier/data/flagged_objects.csv
+relation_classifier/data/heuristic_vs_gazebo_comparison*.csv
+
+# ============================================================
+# Duplicate / backup worlds and scripts
+# ============================================================
+scripts_backup/
+worlds_backup/
+worlds_backup_before_resolution*/
+worlds_basic/
+worlds_dynamic_with_contact*/
+worlds_old/
+worlds_with_contact_sensors/
+
+# ============================================================
+# Miscellaneous runtime artefacts
+# ============================================================
+*.pid
+*.lock

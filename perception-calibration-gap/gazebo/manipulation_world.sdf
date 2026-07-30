@@ -1,0 +1,260 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <world name="manipulation_world">
+
+    <!-- ================= PHYSICS ================= -->
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.003</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>333</real_time_update_rate>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <!-- ================= LIGHT (tunable via scenario_generator.py) ================= -->
+    <!-- light_level param controls <intensity>; direction can be rewritten per-scenario -->
+    <light name="main_light" type="directional">
+      <pose>0 0 5 0 0.3 0</pose>
+      <cast_shadows>true</cast_shadows>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.3 0.3 0.3 1</specular>
+      <direction>-0.3 0.2 -0.9</direction>
+      <intensity>1.0</intensity>  <!-- REWRITE_TARGET: light_intensity -->
+    </light>
+
+    <light name="fill_light" type="point">
+      <pose>1 -1 2 0 0 0</pose>
+      <diffuse>0.4 0.4 0.4 1</diffuse>
+      <attenuation>
+        <range>10</range>
+        <constant>0.5</constant>
+        <linear>0.1</linear>
+        <quadratic>0.01</quadratic>
+      </attenuation>
+      <intensity>0.5</intensity>  <!-- REWRITE_TARGET: light_intensity_fill -->
+    </light>
+
+    <!-- ================= GROUND ================= -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>10 10</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>10 10</size></plane></geometry>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.4 0.4 0.4 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ================= TABLE ================= -->
+    <model name="table">
+      <static>true</static>
+      <pose>0.6 0 0 0 0 0</pose>
+      <link name="table_link">
+        <collision name="collision">
+          <geometry><box><size>0.8 1.0 0.4</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.8 1.0 0.4</size></box></geometry>
+          <material><ambient>0.55 0.4 0.25 1</ambient><diffuse>0.6 0.45 0.3 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ================= SO101 ARM =================
+         Placeholder include — replace with the real SO101 model URI once
+         it's available on the lab Ubuntu machine (e.g. from a local model
+         path or Fuel). Base is mounted at the table edge. -->
+    <include>
+      <name>so101_arm</name>
+      <uri>/workspace/gazebo/so101_description/urdf/so101_arm.urdf</uri><!-- REWRITE_TARGET: so101_model_uri -->
+      <pose>0.15 0 0.2 0 0 0</pose>
+    </include>
+
+    <!-- ================= TARGET CUBE =================
+         scenario_generator.py rewrites pose to control occlusion%.
+         Fixed identity so YOLO/TSDF/occlusion_estimator always know
+         which model is the target vs. distractor. -->
+    <model name="target_cube">
+      <pose>0.6 0 0.45 0 0 0</pose>  <!-- REWRITE_TARGET: target_cube_pose -->
+      <link name="link">
+        <inertial>
+          <mass>0.05</mass>
+          <inertia><ixx>0.0001</ixx><iyy>0.0001</iyy><izz>0.0001</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <collision name="collision">
+          <geometry><box><size>0.05 0.05 0.05</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.05 0.05 0.05</size></box></geometry>
+          <material><ambient>0.8 0.1 0.1 1</ambient><diffuse>0.9 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ================= DISTRACTOR CUBES (up to 8) =================
+         Varied sizes (0.03m - 0.07m edge length) and colors so YOLO
+         must discriminate target from distractors on appearance, not
+         just size. scenario_generator.py enables/repositions N of
+         these per trial via clutter_count param (0-8); unused ones
+         are moved off-camera or set <static>true</static> +
+         placed far below the table. -->
+
+    <model name="distractor_cube_1">
+      <pose>0.5 0.15 0.43 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.03</mass>
+          <inertia><ixx>0.00005</ixx><iyy>0.00005</iyy><izz>0.00005</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="collision"><geometry><box><size>0.03 0.03 0.03</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.03 0.03 0.03</size></box></geometry>
+          <material><ambient>0.1 0.1 0.8 1</ambient><diffuse>0.15 0.15 0.9 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="distractor_cube_2">
+      <pose>0.7 -0.15 0.44 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.035</mass>
+          <inertia><ixx>0.00006</ixx><iyy>0.00006</iyy><izz>0.00006</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="collision"><geometry><box><size>0.04 0.04 0.04</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.04 0.04 0.04</size></box></geometry>
+          <material><ambient>0.1 0.7 0.1 1</ambient><diffuse>0.15 0.8 0.15 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="distractor_cube_3">
+      <pose>0.45 -0.2 0.45 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.04</mass>
+          <inertia><ixx>0.00007</ixx><iyy>0.00007</iyy><izz>0.00007</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="collision"><geometry><box><size>0.05 0.05 0.05</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.05 0.05 0.05</size></box></geometry>
+          <material><ambient>0.8 0.8 0.1 1</ambient><diffuse>0.9 0.9 0.15 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="distractor_cube_4">
+      <pose>0.75 0.2 0.46 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.045</mass>
+          <inertia><ixx>0.00008</ixx><iyy>0.00008</iyy><izz>0.00008</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="collision"><geometry><box><size>0.06 0.06 0.06</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.06 0.06 0.06</size></box></geometry>
+          <material><ambient>0.7 0.3 0.7 1</ambient><diffuse>0.8 0.35 0.8 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="distractor_cube_5">
+      <pose>0.55 0.25 0.43 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.03</mass>
+          <inertia><ixx>0.00005</ixx><iyy>0.00005</iyy><izz>0.00005</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="collision"><geometry><box><size>0.03 0.03 0.03</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.03 0.03 0.03</size></box></geometry>
+          <material><ambient>0.9 0.5 0.1 1</ambient><diffuse>1.0 0.6 0.15 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="distractor_cube_6">
+      <pose>0.65 0.05 0.47 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.05</mass>
+          <inertia><ixx>0.00009</ixx><iyy>0.00009</iyy><izz>0.00009</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="collision"><geometry><box><size>0.07 0.07 0.07</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.07 0.07 0.07</size></box></geometry>
+          <material><ambient>0.1 0.6 0.6 1</ambient><diffuse>0.15 0.7 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="distractor_cube_7">
+      <pose>0.4 0.05 0.44 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.035</mass>
+          <inertia><ixx>0.00006</ixx><iyy>0.00006</iyy><izz>0.00006</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="collision"><geometry><box><size>0.04 0.04 0.04</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.04 0.04 0.04</size></box></geometry>
+          <material><ambient>0.5 0.5 0.5 1</ambient><diffuse>0.6 0.6 0.6 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name="distractor_cube_8">
+      <pose>0.8 -0.05 0.45 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.04</mass>
+          <inertia><ixx>0.00007</ixx><iyy>0.00007</iyy><izz>0.00007</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+        <collision name="collision"><geometry><box><size>0.05 0.05 0.05</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.05 0.05 0.05</size></box></geometry>
+          <material><ambient>0.3 0.2 0.6 1</ambient><diffuse>0.4 0.3 0.7 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ================= OCCLUSION PANEL =================
+         Dedicated occluder, independent of the distractor_cube clutter
+         objects above. scenario_generator.py scales its width via
+         occlusion_pct and positions it along the active camera->target
+         line of sight, so occlusion% and clutter_count can be varied
+         ORTHOGONALLY: previously both were driven by distractor
+         placement (tighter scatter = more occlusion), which confounded
+         the two factors for the C3 occlusion x clutter interaction test.
+         Visual-only (no collision): it blocks the camera's view, not
+         the arm's physical path, since it isn't a real object in the
+         scene, just an occluding presence. -->
+    <model name="occlusion_panel">
+      <pose>5.0 5.0 -2.0 0 0 0</pose>  <!-- REWRITE_TARGET: occlusion_panel_pose -->
+      <static>true</static>
+      <link name="link">
+        <visual name="visual">
+          <geometry><box><size>0.05 0.01 0.20</size></box></geometry>  <!-- REWRITE_TARGET: occlusion_panel_size -->
+          <material><ambient>0.05 0.05 0.05 1</ambient><diffuse>0.08 0.08 0.08 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ================= RGB-D CAMERA =================
+         Single camera, pose parametrized by scenario_generator.py via
+         camera_variant (0 or 1, two genuinely distinct primary-view
+         angles). CAMERA_POSE_RECOVERY (below) is a THIRD, separate pose
+         reserved exclusively for C5 TSDF fusion recovery: it must never
+         be reused as a camera_variant option, or C5 has nowhere distinct
+         to move the camera to when a gate fires (this was a real bug:
+         camera_variant=1 used to point at the same pose reserved for C5). -->
+    <model name="rgbd_camera">
+      <pose>0.6 -0.6 0.8 0 0.6 1.57</pose>  <!-- REWRITE_TARGET: camera_pose -->
+      <static>true</static>
+      <link name="camera_link">
+        <sensor name="rgbd_sensor" type="rgbd_camera">
+          <camera>
+            <horizontal_fov>1.047</horizontal_fov>
+            <image><width>640</width><height>480</height></image>
+            <clip><near>0.05</near><far>5.0</far></clip>
+          </camera>
+          <always_on>true</always_on>
+          <update_rate>5</update_rate>
+          <topic>camera</topic>
+        </sensor>
+      </link>
+    </model>
+
+    <!-- Recovery viewpoint for C5 TSDF fusion, reserved exclusively for
+         runtime use (scenario_generator.move_camera_to_recovery_pose),
+         never assigned at world-generation time to a camera_variant:
+         camera_pose_recovery: 0.6 0.6 0.8 0 0.6 -1.57 -->
+
+  </world>
+</sdf>

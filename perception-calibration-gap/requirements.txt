@@ -1,0 +1,38 @@
+# requirements.txt — perception-calibration-gap
+# Install with: python -m pip install -r requirements.txt
+# (run inside your vla_env venv, after confirming `python -m pip --version` works)
+
+# --- Core ML / OpenVLA inference ---
+torch>=2.1.0
+transformers>=4.40.0
+accelerate>=0.30.0
+bitsandbytes>=0.43.0
+timm>=0.9.0
+tokenizers>=0.19.0
+sentencepiece
+huggingface_hub>=0.23.0
+
+# --- Perception pipeline ---
+opencv-python
+opencv-contrib-python   # needed for cv2.aruco (marker generation/detection)
+open3d
+numpy
+scipy
+
+# --- Statistics / analysis (C1-C5) ---
+statsmodels
+scikit-learn
+shap
+pandas
+
+# --- YOLO fine-tuning ---
+ultralytics
+
+# --- Plotting ---
+matplotlib
+seaborn
+
+# --- Utilities ---
+Pillow
+tqdm
+pyyaml

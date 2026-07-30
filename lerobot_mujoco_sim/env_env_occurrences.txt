@@ -1,0 +1,37 @@
+./scripts/collect/batch_collect_data.py:425:    site_id = env.env.model.site('gripperframe').id
+./scripts/collect/batch_collect_data.py:426:    return env.env.data.site_xpos[site_id].copy().astype(np.float32)
+./scripts/collect/batch_collect_data.py:504:    while env.env.is_viewer_alive() and episode_id < config.num_demo:
+./scripts/collect/batch_collect_data.py:506:        if env.env.loop_every(HZ=config.control_hz):
+./scripts/collect/batch_collect_data.py:623:        env.env.viewer.cam.lookat[0] = 0.35
+./scripts/collect/batch_collect_data.py:624:        env.env.viewer.cam.lookat[1] = 0.0
+./scripts/collect/batch_collect_data.py:625:        env.env.viewer.cam.lookat[2] = 0.85
+./scripts/collect/batch_collect_data.py:626:        env.env.viewer.cam.distance = 1.5
+./scripts/collect/batch_collect_data.py:627:        env.env.viewer.cam.azimuth = 180
+./scripts/collect/batch_collect_data.py:628:        env.env.viewer.cam.elevation = -30
+./scripts/collect/batch_collect_data.py:643:            env.env.close_viewer()
+./scripts/collect/manual_collect_data.py:373:    while env.env.is_viewer_alive() and episode_id < config.num_demo:
+./scripts/collect/manual_collect_data.py:375:        if env.env.loop_every(HZ=20):
+./scripts/collect/manual_collect_data.py:465:        env.env.close_viewer()
+./scripts/visualize/visualize_data.py:129:    while env.env.is_viewer_alive():
+./scripts/visualize/visualize_data.py:131:        if env.env.loop_every(HZ=20):
+./scripts/visualize/visualize_data.py:150:                all_obj_names = env.env.get_body_names(prefix="body_obj_")
+./scripts/visualize/visualize_data.py:154:                        env.env.set_p_base_body(body_name=body_name, p=spawn_xyz[idx, :])
+./scripts/visualize/visualize_data.py:155:                        env.env.set_R_base_body(body_name=body_name, R=np.eye(3, 3))
+./scripts/visualize/visualize_data.py:173:    env.env.close_viewer()
+./scripts/deploy/deploy_act.py:322:    while env.env.is_viewer_alive():
+./scripts/deploy/deploy_act.py:327:        if not env.env.loop_every(HZ=args.hz):
+./mujoco_day2.py:174:    env.env.set_p_base_body(body_name=target_body, p=target_xyz)
+./mujoco_day2.py:175:    env.env.set_R_base_body(body_name=target_body, R=np.eye(3, 3))
+./mujoco_day2.py:176:    env.env.set_p_base_body(body_name=occluder_body, p=occluder_xyz)
+./mujoco_day2.py:177:    env.env.set_R_base_body(body_name=occluder_body, R=np.eye(3, 3))
+./mujoco_day2.py:179:    env.env.data.qvel[:] = 0.0
+./mujoco_day2.py:180:    env.env.data.qacc[:] = 0.0
+./mujoco_day2.py:181:    env.env.forward(increase_tick=False)
+./mujoco_render.py:98:    rgb, depth_m, pcd, T_view = env.env.get_fixed_cam_rgbd_pcd(cam_name=cam_name, downscale_pcd=0.1)
+./isolate_gray_box.py:15:env.env.set_p_base_body(body_name="body_obj_block_1", p=away)
+./isolate_gray_box.py:16:env.env.set_R_base_body(body_name="body_obj_block_1", R=np.eye(3, 3))
+./isolate_gray_box.py:17:env.env.set_p_base_body(body_name="body_obj_block_2", p=away + [0, 0, 0.1])
+./isolate_gray_box.py:18:env.env.set_R_base_body(body_name="body_obj_block_2", R=np.eye(3, 3))
+./isolate_gray_box.py:19:env.env.data.qvel[:] = 0.0
+./isolate_gray_box.py:20:env.env.data.qacc[:] = 0.0
+./isolate_gray_box.py:21:env.env.forward(increase_tick=False)

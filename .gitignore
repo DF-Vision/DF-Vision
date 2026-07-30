@@ -1,0 +1,57 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# =========================
+# Virtual environments
+# =========================
+vla_env/
+perception_env/
+venv/
+.venv/
+
+# =========================
+# VS Code / IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# ROS build outputs
+# =========================
+**/build/
+**/install/
+**/log/
+
+# =========================
+# Runtime outputs
+# =========================
+**/runs/
+*.log
+
+# =========================
+# Large generated data
+# =========================
+**/generated_markers/
+**/mock-pipeline/data/
+**/mock-pipeline/exploratory_day6/
+
+# =========================
+# Ignore projects not part of this repo
+# =========================
+ros2_ws/
+so101-ros-physical-ai/
+
+get-pip.py

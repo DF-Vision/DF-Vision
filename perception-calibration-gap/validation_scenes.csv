@@ -1,0 +1,4 @@
+scene_id,object_id,target_half_x,target_half_y,target_half_z,target_cx,target_cy,target_cz,occ_half_x,occ_half_y,occ_half_z,occ_cx,occ_cy,occ_cz,fx,fy,cx_px,cy_px,notes
+apple_baseline_noocc,apple,0.035,0.035,0.035,0.0,0.0,0.5,0,0,0,0,0,0,600,600,320,240,No occluder present -- expected visibility should be 1.0 exactly. REPLACE with your real measured apple half-extent and camera calibration.
+apple_partial_occ_01,apple,0.035,0.035,0.035,0.0,0.0,0.5,0.02,0.06,0.1,0.01,0.0,0.35,600,600,320,240,"Example partial occlusion (occluder in front, z=0.35 < target z=0.50). REPLACE with real marker-detected poses."
+apple_occluder_behind,apple,0.035,0.035,0.035,0.0,0.0,0.5,0.05,0.05,0.05,0.0,0.0,0.8,600,600,320,240,"Depth-ordering check: occluder is BEHIND target (z=0.80 > 0.50) despite large 2D overlap. Expected visibility should be 1.0 regardless of overlap -- this row specifically tests the depth-ordering rule, not the projection math."

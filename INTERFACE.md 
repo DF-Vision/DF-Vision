@@ -1,0 +1,50 @@
+# INTERFACE.md — Interface Contract
+Status: RECONSTRUCTED [date] after original file was lost pre-commit.
+Rebuilt from SCHEMA.md Section 4 (code-verified against
+extract_relation_features.py / classify_relation.py / build_prg.py /
+compute_prg_edge_error.py) and the Day-1 execution notes.
+NOT yet re-confirmed with collaborator — treat as a draft redo, not a
+re-freeze, until she's seen this exact version.
+
+## 1. Interface signature
+compute_prg_edge_error(rgb, depth, target_bbox) -> float
+- Output normalized to [0.0, 1.0]
+- Polarity: 0 = boundary/relation reliably consistent, 1 = likely
+  unreliable (same direction as Gap — higher = worse)
+- Always returns a scalar, never None (ambiguous cases fall back to 0.5)
+- Units: SI, meters, throughout
+- Called only from integration/prg_client.py
+
+Full call chain (code-confirmed):
+1. LiveDepthFeatureSource(camera_intrinsics).compute(depth, mask_a, mask_b) -> features
+2. classify_relation(features) -> (relation, confidence)
+3. compute_prg_edge_error(rgb, depth, target_bbox, relation, confidence, mask_a, mask_b) -> float
+
+## 2. Object vocabulary
+Option A (agreed default): 3 physical objects (apple, purse, glass) as the
+real-hardware set. Her synthetic categories remain the classifier's
+training distribution only — no 1:1 mapping required.
+
+## 3. Units and coordinate-frame agreement
+- All distances: meters, SI, throughout both pipelines.
+- Camera-optical frame vs. arm-base frame vs. world frame must be named
+  explicitly at every handoff point between the two pipelines.
+- grasp_point_xyz_camera (hers): camera-optical frame.
+- grasp_point_xyz_robot (mine): arm-base frame, after my calibration
+  transform — NaN until calibration exists, never guessed.
+
+## 4. Trial schema
+See SCHEMA.md — single source of truth for field ownership/types.
+Not duplicated here, to avoid the two files drifting apart.
+
+## 5. Open items — NOT yet confirmed with collaborator
+- Who owns the CameraIntrinsics dataclass (her file vs. a shared file)
+- SUPPORT_RELATIVE_HEIGHT_THRESHOLD is a placeholder pending tuning —
+  any "Support" prediction before tuning is provisional
+- Structural independence (her depth pipeline not consuming my
+  detector's masks/bboxes) — she has stated she has NOT audited this yet
+
+## Freeze discipline
+Reconstructed [date]. Must be re-reviewed and re-agreed with collaborator
+before being treated as frozen. Once confirmed: no field renames, no
+silent type changes — amendments only, dated, appended below this line.

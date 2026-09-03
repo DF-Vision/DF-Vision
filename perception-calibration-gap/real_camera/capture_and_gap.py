@@ -23,6 +23,11 @@ from datetime import datetime, timezone
 import numpy as np
 import cv2
 
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from integration import prg_client
+
+
+from integration.camera_intrinsics import CameraIntrinsics as PrgCameraIntrinsics
 sys.path.insert(0, "/workspace")
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -88,13 +93,45 @@ def run_one_trial(trial_id: int, occluder_present: bool, pipeline, align_filter,
     )
     target_pose = Pose(x=target_xyz[0], y=target_xyz[1], z=target_xyz[2])
 
+    occluder_mask = None
+
     if occluder_present:
-        occ_xyz, _ = detect_marker_pose(color, OCCLUDER_MARKER_ID, OCCLUDER_MARKER_SIZE_M, camera_matrix)
-        occ_geom = ObjectGeometry(width=OCCLUDER_WIDTH_M, height=OCCLUDER_HEIGHT_M, depth=OCCLUDER_DEPTH_M)
-        occ_pose = Pose(x=occ_xyz[0], y=occ_xyz[1], z=occ_xyz[2])
+        occ_xyz, occ_corners = detect_marker_pose(
+            color,
+            OCCLUDER_MARKER_ID,
+            OCCLUDER_MARKER_SIZE_M,
+            camera_matrix,
+        )
+
+        occ_geom = ObjectGeometry(
+            width=OCCLUDER_WIDTH_M,
+            height=OCCLUDER_HEIGHT_M,
+            depth=OCCLUDER_DEPTH_M,
+        )
+
+        occ_pose = Pose(
+            x=occ_xyz[0],
+            y=occ_xyz[1],
+            z=occ_xyz[2],
+        )
+
+        occluder_mask = build_bbox_mask_from_corners(
+            color.shape,
+            occ_corners,
+        )
+
     else:
-        occ_geom = ObjectGeometry(width=0.0, height=0.0, depth=0.0)
-        occ_pose = Pose(x=0.0, y=0.0, z=target_xyz[2] + 10.0)
+        occ_geom = ObjectGeometry(
+            width=0.0,
+            height=0.0,
+            depth=0.0,
+        )
+
+        occ_pose = Pose(
+            x=0.0,
+            y=0.0,
+            z=target_xyz[2] + 10.0,
+        )
 
     true_visibility = compute_true_visibility(target_pose, target_geom, occ_pose, occ_geom, intr_dict)
 
@@ -128,6 +165,52 @@ def run_one_trial(trial_id: int, occluder_present: bool, pipeline, align_filter,
     # --- Gap: real gap_computer.py, unmodified, single-step ---
     gap_result = compute_gap_features([perceived_visibility], [true_visibility])
 
+    # --- prg_edge_error: real chain via integration/prg_client.py ---
+
+    depth_m = depth_mm.astype(np.float32) / 1000.0
+
+    all_object_masks = {
+        OBJECT_NAME: mask,
+    }
+
+    if occluder_mask is not None:
+        all_object_masks["occluder"] = occluder_mask
+
+    camera_intrinsics = PrgCameraIntrinsics(
+        name="orbbec_gemini2",
+        xyz=np.zeros(3),
+        rpy=np.zeros(3),
+        width=color.shape[1],
+        height=color.shape[0],
+        fx=intr_dict["fx"],
+        fy=intr_dict["fy"],
+        cx=intr_dict["cx"],
+        cy=intr_dict["cy"],
+        clip_near=0.1,
+        clip_far=5.0,
+    )
+
+    prg_edges_result = prg_client.get_prg_edge_error(
+        rgb=color,
+        depth=depth_m,
+        target_name=OBJECT_NAME,
+        all_object_masks=all_object_masks,
+        trial_id=str(trial_id),
+        camera_intrinsics=camera_intrinsics,
+    )
+
+    prg_is_stub = (
+        prg_edges_result[0].get("is_stub", True)
+        if prg_edges_result
+        else True
+    )
+
+    prg_error_note = (
+        prg_edges_result[0].get("error_note")
+        if prg_edges_result
+        else None
+    )
+
     # --- decision: real mock_vla.py, geometrically grounded ---
     attempt = mock_vla.execute(
         true_position=target_xyz,
@@ -152,6 +235,9 @@ def run_one_trial(trial_id: int, occluder_present: bool, pipeline, align_filter,
         camera_pose_variant="real_hw_smoke_gemini2",
         outcome=attempt.outcome, failure_type=attempt.failure_type,
         tsdf_fusion_attempted=False, gate_warmup_phase=True, gate_fired=None,
+        prg_edges=prg_edges_result,
+        prg_is_stub=prg_is_stub,
+        prg_error_note=prg_error_note,
     )
     logger.append_trial(record)
     return record

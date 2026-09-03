@@ -1,0 +1,258 @@
+SCHEMA.md — Trial Record Field Reference (DRAFT, pre-joint-setup-day)
+Status: DRAFT. Not yet frozen. To be reviewed and agreed with the collaborator tonight (Merge-First Protocol, Day 1), then frozen exactly like PREREG.md — no edits once real trial collection starts, amendments only.
+Verification note: Sections 3–6 (the collaborator-facing interface) have been checked directly against extract_relation_features.py, classify_relation.py, build_prg.py, and compute_prg_edge_error.py. Sections 1–2 (own pipeline's logger.py fields) are carried over from the prior draft unverified against code in this review — logger.py was not available to check. Re-confirm Sections 1–2 against the actual file before freezing; don't treat their "already verified" status as re-established here.
+Revision 3 (today) — three corrections to Revision 2's Section 3, found by checking the collaborator's code directly rather than her summary of it. None of these change the interface shape; they change what specific fields mean and must not be misread as.
+
+1. Required fields (own pipeline)
+(unchanged from Revision 2 — re-verify against current logger.py before freezing; not independently re-checked this pass)
+Field
+Type
+Source
+Notes
+trial_id
+int
+own pipeline
+unique per trial
+session_id
+int
+own pipeline
+assigned per SESSION_SIZE-trial block
+object_id
+str
+own pipeline
+one of the 5 study objects: apple, tennis_ball, purse, glass, remote
+session_baseline_failure_rate
+float
+own pipeline
+from the zero-occlusion/zero-clutter session-baseline block, stamped onto every trial in that session
+measured_true_visibility
+float
+own pipeline
+from occlusion_estimator.compute_true_visibility(), independent of any detector
+true_occlusion
+float
+own pipeline
+1.0 - measured_true_visibility
+clutter_count
+int
+own pipeline
+scenario parameter
+perceived_visibility_initial
+float
+own pipeline
+from tsdf_fusion.MaskedTSDFFusion.compute_perceived_visibility()
+Gap_initial
+float
+own pipeline
+from gap_computer.compute_gap_features()
+Gap_max
+float
+own pipeline
+from gap_computer.compute_gap_features()
+Gap_slope
+float
+own pipeline
+from gap_computer.compute_gap_features()
+failure
+int (0/1)
+own pipeline
+derived from outcome
+camera_pose_variant
+str
+own pipeline
+scenario parameter
+
+2. Optional fields — own pipeline
+(unchanged from Revision 2, not independently re-checked this pass)
+Field
+Type
+Notes
+openvla_checkpoint_hash
+str | None
+frozen-policy verification; populated once real-hardware policy is locked (Weeks 1–2)
+openvla_seed
+int | None
+same as above
+timestamp_utc
+str
+auto-populated at record construction (datetime.now(timezone.utc).isoformat())
+nonconformity_score
+float | None
+C4 online gate — None during gate_warmup_phase
+gate_fired
+bool | None
+C4 online gate
+gate_warmup_phase
+bool | None
+C4 online gate
+tsdf_fusion_attempted
+bool | None
+C5 recovery tracking
+Gap_before_fusion
+float | None
+C5 recovery tracking
+Gap_after_fusion
+float | None
+C5 recovery tracking
+outcome
+str | None
+richer than the bare failure flag (e.g. "success", "fail")
+failure_type
+str | None
+populated on failure only
+goal_pose_tolerance
+float | None
+scenario parameter
+camera_pose
+list[float] | None
+full 6-DOF scenario parameter
+light_level
+float | None
+scenario parameter
+seed
+int | None
+trial-level RNG seed
+gap_per_step
+list[float] | None
+full trajectory, beyond the 3 summary stats
+timing_per_step
+list[float] | None
+full trajectory
+true_visibility_per_step
+list[float] | None
+full trajectory
+
+
+3. Collaborator's system — real interface (code-confirmed)
+3a. Per-trial fields
+Field
+Type
+Source
+Notes
+prg_edges
+list[dict] | None
+integration/prg_client.get_prg_edge_error()
+one entry per target-adjacent pair this trial (see 3b); None/[] if target has no adjacent object in-frame — valid, not an error
+prg_is_stub
+bool
+integration layer
+True if this trial's prg_edges came from the seeded stub (config flag, missing camera_intrinsics, or an exception in the real chain) rather than the real classifier chain — see Section 6 for expected exception causes, not just "something broke"
+prg_error_note
+str | None
+integration layer
+populated only if the real chain raised — carries the exception string so a bad trial is debuggable, never silently dropped
+
+3b. Per-edge fields (one dict per entry in prg_edges)
+Field
+Type
+Notes
+neighbor_name
+str
+which detected object this edge is against
+relation_prediction
+str | None
+"Contact" / "Support" / "Separate", from classify_relation(). "Contact" and "Separate" are direct model outputs (logistic_model.joblib, trained on physics-verified gazebo_contact, binary). "Support" is NOT a model output — it's a post-hoc split of the model's "Contact" class using a relative_height threshold (SUPPORT_RELATIVE_HEIGHT_THRESHOLD, currently a placeholder value pending Step 6 tuning against training_data_v3_metric_only.csv's heuristic_label). The model was never trained on a 3-way target — treat this distinction as load-bearing for any downstream per-class analysis.
+relation_confidence
+float | None
+classify_relation()'s confidence. Only meaningful as stated for "Contact"/"Separate" predictions — it is the binary model's predict_proba for touching-vs-not. For "Support" predictions, this is the same binary confidence carried over from before the post-hoc split — it is NOT a calibrated confidence in the Support/Contact distinction itself, since the model was never asked to estimate one. Do not aggregate this field across relation_prediction groups without accounting for this.
+prg_edge_error
+float
+from compute_prg_edge_error(), range [0,1]. Always a scalar, never None — code-confirmed: geometric ambiguity falls back to 0.5 (neutral), not None. Polarity: 0 = boundary reliably consistent, 1 = likely unreliable — same direction as Gap (higher = worse), confirmed against confidence_term/geometric_term logic; get explicit one-line confirmation from collaborator before relying on this for the two-signal conformal gate.
+geometric_feature_vector
+dict | None
+the dict from LiveDepthFeatureSource.compute(), logged in full for reproducibility. Contains 9 keys, not 8: the 8 model features plus minimum_boundary_distance_is_metric (a bool metadata flag, dropped before the vector is fed to the classifier — not itself a 9th feature). Don't reshape this into an 8-element array without dropping that key first.
+mask_is_bbox_placeholder
+bool
+True if mask_a/mask_b for this edge were bbox-rectangle placeholders rather than real segmentation masks. Collaborator-confirmed: boundary_sharpness, edge_continuity, and occlusion_boundary_score are systematically distorted (not just noisier) on rectangle masks. Any edge with this flag True is wiring-validation only, never a reportable number.
+
+3c. Explicitly out of scope for this paper
+Per PREREG.md and the master reference's stated boundaries, these fields exist so the collaborator's own layer has somewhere to write, but their presence here is not this paper claiming ownership of that functionality:
+Field
+Type
+Source
+Notes
+dominant_deferral_signal
+str | None
+collaborator's gate-consuming layer
+e.g. "gap", "prg", "both" — feeds her explanation-generation layer
+voice_command_text
+str | None
+collaborator's ASR layer
+out of scope
+grounding_confidence
+float | None
+collaborator's system
+out of scope
+
+
+4. The real interface contract
+def get_prg_edge_error(
+    rgb, depth, target_name: str, all_object_masks: dict[str, "np.ndarray"],
+    trial_id: str, camera_intrinsics: "CameraIntrinsics",
+) -> list[dict]:
+    """
+    integration/prg_client.py — thin sequencing wrapper only, no logic of
+    its own (collaborator's explicit design note: if decision logic
+    accumulates here, it belongs in one of the three stages below).
+
+    Calls, in order, for every pair returned by enumerate_adjacent_pairs()
+    that contains target_name:
+        1. LiveDepthFeatureSource(camera_intrinsics).compute(depth, mask_a, mask_b)
+           -> features: dict (9 keys — see 3b note)
+        2. classify_relation(features) -> (relation: str, confidence: float)
+           NaN in any of the 8 model features raises ValueError here —
+           this is an EXPECTED failure mode (missing open3d, non-overlapping
+           masks), not necessarily a bug. See Section 6.
+        3. compute_prg_edge_error(rgb, depth, target_bbox, relation, confidence,
+                                    mask_a, mask_b) -> float  (always scalar, never None)
+
+    Returns a list of per-edge dicts (Section 3b shape), or [] if
+    target_name has no adjacent objects this frame. Falls back to a
+    single seeded-stub entry (Section 3a, prg_is_stub=True) if
+    config["use_stub"] is set, camera_intrinsics is missing, or the real
+    chain raises for any reason -- a crash in the collaborator's code
+    must never kill this pipeline's own Gap logging or the trial.
+    """
+
+Internal per-pair function (unchanged from her code, confirmed by direct read):
+def compute_prg_edge_error(rgb, depth, target_bbox, relation: str, confidence: float,
+                            mask_a: "np.ndarray", mask_b: "np.ndarray") -> float:
+    """Combines (a) classifier confidence and (b) a depth-boundary geometric
+    consistency check. Returns a scalar in [0,1]; 0 = fully consistent,
+    1 = maximally inconsistent. Never returns None."""
+
+Open items — confirm in writing tonight, don't treat as settled
+~~None-return contradiction~~ — resolved. Code-confirmed: compute_prg_edge_error() always returns a scalar; ambiguity falls back to 0.5, never None. prg_edge_error's type in Section 3b is plain float, no Optional. Closed, no further confirmation needed.
+Polarity. Proposed and code-consistent: 0 = boundary reliably separated, 1 = likely unreliable, matching Gap's direction (higher = worse), needed for the max-combination gate formula to operate on a shared scale. Get an explicit one-line confirmation from the collaborator rather than relying on inferred consistency.
+CameraIntrinsics — new dataclass, collaborator-approved, not yet in her repo:
+ @dataclassclass CameraIntrinsics:    name: str    xyz: "np.ndarray"    rpy: "np.ndarray"    width: int    height: int    fx: float    fy: float    cx: float    cy: float    clip_near: float    clip_far: float
+Confirmed safe: fx/fy/cx/cy are the only attributes anything downstream (depth_to_world_points, feat_minimum_boundary_distance, feat_boundary_sharpness) ever reads off a camera object — horizontal_fov is never read directly, so fx != fy is safe. Built directly from Orbbec calibration, no horizontal_fov round-trip. Who adds this class to the repo (her file vs. a shared one) — still not decided, confirm tonight.
+Structural independence — two separate claims, don't conflate:
+Mine: her boundary-preserving depth estimator does not internally consume this pipeline's object detector's masks/bounding boxes. Non-negotiable, gated on a dated PREREG.md amendment. Get this in writing with a code pointer.
+Hers: compute_prg_edge_error() itself does not consume this pipeline's Gap, calibration output, or gate decision logic. Already asserted in her own contract — confirm no changes, but recognize this is a separate claim, not proof of the first.
+Live vs. post-hoc. This pipeline's own statistical results (C1-ext/C4-ext) run post-hoc on logged frames — no latency requirement on this end. Confirm acceptable to her; her own explanation/TTS demo's latency needs are her integration risk, not something that changes trial cadence here.
+NEW — Support-split threshold is untuned. SUPPORT_RELATIVE_HEIGHT_THRESHOLD in classify_relation.py is currently a placeholder (-0.01), pending the offline validation pass against heuristic_label == "Support" rows in training_data_v3_metric_only.csv. Any relation_prediction == "Support" value logged before that validation is run is provisional — don't let real trial collection start before this is tuned and the threshold value is recorded here.
+
+5. Mask provenance
+No segmentation model currently exists in either pipeline for real hardware (the sim path used Gazebo's semantic camera, which has no real-hardware equivalent). Until one exists:
+all_object_masks values are bbox-rectangle placeholders (bbox_to_mask() in prg_client.py).
+Every edge computed from placeholder masks is flagged mask_is_bbox_placeholder=True (Section 3b).
+Fastest real path, per collaborator: SAM prompted with the existing detector's bboxes — no training required. Not built today; smoke-testing proceeds on placeholders in the meantime.
+Any prg_edges entry with mask_is_bbox_placeholder=True is excluded from reportable analysis — wiring/smoke-test validation only, per collaborator's explicit warning that boundary-dependent features are systematically (not just noisily) distorted on rectangles.
+
+6. Stub status and expected failure modes
+A stub get_prg_edge_error() path returning a single seeded-random entry (prg_is_stub=True) is wired into the pipeline exactly where the real chain will eventually go, verified end-to-end via test_prg_stub_integration.py: stub → TrialRecord → TrialLogger.append_trial() → JSONL on disk → load_trials() — confirmed the same value round-trips intact.
+daily_integration_check.py runs end-to-end from the moment the collaborator's code lands, without waiting on her real implementation.
+logger.py's schema round-trip is confirmed for prg_edges/prg_is_stub before any real data exists.
+NEW — known, expected causes of prg_is_stub=True on a real-chain attempt (i.e. not config["use_stub"]), so these aren't re-diagnosed from scratch mid-collection:
+surface_normal_consistency returns NaN when open3d isn't installed in the running environment, or when mask_a/mask_b don't sufficiently overlap in the point cloud — classify_relation() raises ValueError on any NaN feature, triggering the stub fallback.
+Missing or malformed camera_intrinsics.
+Any other exception in the three-stage chain — always check prg_error_note first; it carries the actual exception string rather than requiring a re-run to reproduce.
+Explicitly: nothing computed against this stub, or against mask_is_bbox_placeholder=True edges, is ever a real finding. Both are placeholders, not data.
+
+7. Freeze discipline
+Once trial collection starts, this file is frozen exactly like PREREG.md: no field renames, no silent type changes, amendments only, dated, appended below this line.
+Amendments
+(none yet — this document is still pre-freeze; each numbered revision above is a revision, not an amendment, since collection hasn't started)
+
+

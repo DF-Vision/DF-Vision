@@ -96,11 +96,13 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent / "gazebo"))
 sys.path.insert(0, str(Path(__file__).parent / "mock-pipeline"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo root, for integration/
 
 from occlusion_estimator import ObjectGeometry, Pose, compute_true_visibility
 from gap_computer import compute_gap_features
 from conformal_gate import ConformalGate
 from logger import TrialRecord, TrialLogger
+from integration.prg_client import log_integration_fields
 import mock_vla
 
 
@@ -438,6 +440,23 @@ def run_trial(trial_id: int, params: dict, gate_adapter: OnlineGateAdapter,
 
     gap_result = compute_gap_features(perceived_per_step, true_vis_per_step)
 
+    # --- PRG edge-error, same frame/trial_id as the Gap computation above,
+    # called before either execute_action_* below acts on the frame. NOT
+    # wrapped in a try/except here -- prg_client's internal resolver already
+    # catches its own exceptions internally and always returns a valid
+    # list[dict] (falling back to a seeded stub on any failure), so a crash
+    # in the collaborator's real chain must never propagate up and kill this
+    # trial's own Gap logging. No real rgb/depth/masks/camera_intrinsics
+    # exist in this pipeline yet (mock path is synthetic-geometry only; the
+    # real-physics path doesn't currently surface them out of
+    # mujoco_gap_pipeline) -- this always takes the stub path today via
+    # prg_config.json's use_stub flag, same as camera_intrinsics=None would
+    # force on its own.
+    integration_fields = log_integration_fields(
+        rgb=None, depth=None, target_name=obj_name, all_object_masks={},
+        trial_id=str(trial_id), camera_intrinsics=None,
+    )
+
     true_vis_initial = true_vis_per_step[0]
     perceived_vis_initial = perceived_per_step[0]
     true_vis_final = true_vis_per_step[-1]
@@ -520,6 +539,7 @@ def run_trial(trial_id: int, params: dict, gate_adapter: OnlineGateAdapter,
         gap_per_step=gap_result.gap_trajectory,
         timing_per_step=timing_per_step,
         true_visibility_per_step=true_vis_per_step,
+        **integration_fields,
     )
     logger.append_trial(record)
     return record

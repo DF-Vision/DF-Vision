@@ -32,29 +32,30 @@ def bbox_to_mask(bbox, shape):
     return mask
 
 
-def get_prg_edge_error(rgb, depth, target_name, all_object_masks, trial_id,
+def _resolve_prg_edges(rgb, depth, target_name, all_object_masks, trial_id,
                         camera_intrinsics=None, masks_are_bbox_placeholder=False):
     """
-    target_name: key into all_object_masks identifying the grasp target.
-    all_object_masks: dict[str, np.ndarray] — every detected object's mask
-                       in-frame (real segmentation, or bbox_to_mask placeholders).
-    camera_intrinsics: her CameraIntrinsics instance, built from Orbbec calibration.
+    Internal. Computes the per-edge results AND the trial-level stub/error
+    status in one place, so the two can never drift out of sync with each
+    other. Every returned edge dict has EXACTLY SCHEMA.md Section 3b's six
+    fields (neighbor_name, relation_prediction, relation_confidence,
+    prg_edge_error, geometric_feature_vector, mask_is_bbox_placeholder) --
+    no extra keys, on every code path (stub, real, exception-fallback).
 
-    Returns a LIST of per-neighbor-pair results (one entry per target-adjacent
-    edge), per collaborator's recommendation — logs all pairs, doesn't
-    pre-select "the" neighbor.
+    Returns (edges: list[dict], is_stub: bool, error_note: Optional[str]).
     """
     config = _load_config()
 
     if config["use_stub"] or camera_intrinsics is None or target_name not in all_object_masks:
-        return [{
-            "prg_edge_error": _seeded_stub_value(trial_id),
-            "is_stub": True,
+        edge = {
+            "neighbor_name": None,
             "relation_prediction": None,
             "relation_confidence": None,
+            "prg_edge_error": _seeded_stub_value(trial_id),
             "geometric_feature_vector": None,
-            "neighbor_name": None,
-        }]
+            "mask_is_bbox_placeholder": masks_are_bbox_placeholder,
+        }
+        return [edge], True, None
 
     try:
         from relation_classifier.scripts.extract_relation_features import (
@@ -67,7 +68,7 @@ def get_prg_edge_error(rgb, depth, target_name, all_object_masks, trial_id,
         target_pairs = [p for p in pairs if target_name in p]
 
         if not target_pairs:
-            return []  # target has no adjacent objects this frame — valid, not an error
+            return [], False, None  # target has no adjacent objects this frame — valid, not an error
 
         feature_source = LiveDepthFeatureSource(camera_intrinsics)
         results = []
@@ -85,23 +86,65 @@ def get_prg_edge_error(rgb, depth, target_name, all_object_masks, trial_id,
             assert 0.0 <= edge_error <= 1.0, f"prg_edge_error out of range: {edge_error}"
 
             results.append({
-                "prg_edge_error": edge_error,
-                "is_stub": False,
+                "neighbor_name": neighbor_name,
                 "relation_prediction": relation,
                 "relation_confidence": confidence,
+                "prg_edge_error": edge_error,
                 "geometric_feature_vector": features,
-                "neighbor_name": neighbor_name,
                 "mask_is_bbox_placeholder": masks_are_bbox_placeholder,
             })
-        return results
+        return results, False, None
 
     except Exception as e:
-        return [{
-            "prg_edge_error": None,
-            "is_stub": True,
+        edge = {
+            "neighbor_name": None,
             "relation_prediction": None,
             "relation_confidence": None,
+            # Documented neutral fallback (SCHEMA.md Section 3b: "Always a
+            # scalar, never None") -- matches what the real
+            # compute_prg_edge_error() does on ambiguous/insufficient input,
+            # so a crash here can't propagate a None into
+            # conformal_gate.py's nonconformity_dual(), which divides by a
+            # percentile threshold.
+            "prg_edge_error": 0.5,
             "geometric_feature_vector": None,
-            "neighbor_name": None,
-            "error_note": str(e),
-        }]
+            "mask_is_bbox_placeholder": masks_are_bbox_placeholder,
+        }
+        return [edge], True, str(e)
+
+
+def get_prg_edge_error(rgb, depth, target_name, all_object_masks, trial_id,
+                        camera_intrinsics=None, masks_are_bbox_placeholder=False):
+    """
+    target_name: key into all_object_masks identifying the grasp target.
+    all_object_masks: dict[str, np.ndarray] — every detected object's mask
+                       in-frame (real segmentation, or bbox_to_mask placeholders).
+    camera_intrinsics: her CameraIntrinsics instance, built from Orbbec calibration.
+
+    Returns a LIST of per-neighbor-pair results (one entry per target-adjacent
+    edge), per collaborator's recommendation — logs all pairs, doesn't
+    pre-select "the" neighbor. Every entry matches SCHEMA.md Section 3b
+    exactly (see _resolve_prg_edges).
+    """
+    edges, _is_stub, _error_note = _resolve_prg_edges(
+        rgb, depth, target_name, all_object_masks, trial_id,
+        camera_intrinsics, masks_are_bbox_placeholder,
+    )
+    return edges
+
+
+def log_integration_fields(rgb, depth, target_name, all_object_masks, trial_id,
+                            camera_intrinsics=None, masks_are_bbox_placeholder=False) -> dict:
+    """
+    Single entry point for the three TrialRecord fields this integration
+    owns (SCHEMA.md Section 3a): prg_edges, prg_is_stub, prg_error_note.
+    Computes them together (via _resolve_prg_edges) so callers (run_trial.py)
+    never derive prg_is_stub/prg_error_note by hand from prg_edges' contents
+    -- which is no longer even possible now that per-edge dicts carry only
+    SCHEMA.md's six documented fields, nothing else.
+    """
+    edges, is_stub, error_note = _resolve_prg_edges(
+        rgb, depth, target_name, all_object_masks, trial_id,
+        camera_intrinsics, masks_are_bbox_placeholder,
+    )
+    return {"prg_edges": edges, "prg_is_stub": is_stub, "prg_error_note": error_note}

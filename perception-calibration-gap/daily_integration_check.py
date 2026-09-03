@@ -120,9 +120,10 @@ def main():
     print(f"[real] Gap_initial={gap_result.gap_initial:.4f}  "
           f"(gap_computer.py, unmodified)")
 
-    # --- STUB: PRG_edge_error ---
-    prg_value = compute_prg_edge_error(rgb=None, depth=None, target_bbox=None, rng=rng)
-    print(f"[STUB] prg_edge_error={prg_value:.4f}  (placeholder -- never a real finding)")
+    # --- STUB: PRG edges (SCHEMA.md Section 3a/3b shape: list of per-edge dicts) ---
+    prg_edges = compute_prg_edge_error(rgb=None, depth=None, target_bbox=None, rng=rng)
+    prg_value = prg_edges[0]["prg_edge_error"]  # single synthetic edge here -- only one to feed the gate score below
+    print(f"[STUB] prg_edges={prg_edges}  (placeholder -- never a real finding)")
 
     # --- Merged nonconformity score (real ConformalGate scoring math, applied
     # inline to this single synthetic trial -- NOT a real calibration/fit,
@@ -161,7 +162,9 @@ def main():
         nonconformity_score=merged_nonconformity_score,
         gate_fired=False,  # placeholder scale, not a fitted threshold -- never a real gate decision
         gate_warmup_phase=True,
-        prg_edge_error=prg_value,
+        prg_edges=prg_edges,
+        prg_is_stub=True,
+        prg_error_note=None,
         dominant_deferral_signal=dominant_signal,
         voice_command_text=voice_command_text_placeholder,
         grounding_confidence=None,
@@ -178,11 +181,11 @@ def main():
     # Fields legitimately allowed to stay None in this wiring-only check
     # (mirrors mujoco_day3.py's own allowed_none convention).
     allowed_none = {
-        "openvla_checkpoint_hash", "openvla_seed", "Gap_before_fusion",
+        "policy_checkpoint_hash", "policy_seed", "Gap_before_fusion",
         "Gap_after_fusion", "outcome", "failure_type", "goal_pose_tolerance",
         "camera_pose", "light_level", "seed", "gap_per_step", "timing_per_step",
         "true_visibility_per_step", "tsdf_fusion_attempted",
-        "voice_command_text", "grounding_confidence",
+        "voice_command_text", "grounding_confidence", "prg_error_note",
     }
     bad_fields = []
     for f in fields(record):

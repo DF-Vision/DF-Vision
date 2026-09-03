@@ -197,6 +197,11 @@ def run_one_trial(trial_id: int, occluder_present: bool, pipeline, align_filter,
         all_object_masks=all_object_masks,
         trial_id=str(trial_id),
         camera_intrinsics=camera_intrinsics,
+        # Every mask in all_object_masks above comes from build_bbox_mask_from_corners()
+        # (dilated marker-corner rectangles), never real segmentation -- SCHEMA.md
+        # Section 3b/5 requires this flag True so these edges are excluded from
+        # reportable analysis, not silently mislabeled as real-segmentation-derived.
+        masks_are_bbox_placeholder=True,
     )
 
     prg_is_stub = (

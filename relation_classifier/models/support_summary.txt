@@ -1,0 +1,15 @@
+Data source: data/training_data_metric_only.csv
+Rows: 176 (Contact=101, Support=75), unique groups: 42
+Features: ['minimum_boundary_distance', 'overlap_ratio', 'relative_height'] (relative_height fed as abs() -- see module docstring)
+Model: LogisticRegression(C=1.0), StandardScaler-preprocessed
+
+Group-aware 5-fold CV (documentation only, NOT the persisted model): F1(Support) mean=0.6586 std=0.0857 folds=[0.5926, 0.625, 0.8205, 0.6667, 0.5882]
+  balanced_accuracy mean=0.7057 std=0.0644 folds=[0.6721, 0.6833, 0.8039, 0.75, 0.619]
+
+Comparison baselines (from the prior threshold sweep, same CV methodology): old threshold -0.01 (deployed) F1=0.3575/bal_acc=0.3616; best single-feature threshold -0.002375 F1=0.5972/bal_acc=0.5288; always-Support degenerate rule F1=0.5914/bal_acc=0.5000.
+McNemar's test vs. old threshold approaches: p<0.0001 (both), i.e. this model's error pattern is statistically distinguishable from the old threshold's, not a relabeling of the same mistakes. RF was also evaluated (F1=0.7302/bal_acc=0.7587, both higher than LogReg) but McNemar's RF-vs-LogReg p=0.4996 -- not statistically distinguishable from LogReg, so LogReg's much lower fold variance (std 0.06-0.09 vs RF's 0.13-0.14) was the deciding factor for production deployment on unseen real-hardware object pairs.
+
+Logistic Regression coefficients (standardized scale, final model fit on all rows):
+  minimum_boundary_distance    -0.9743
+  relative_height              -0.8873
+  overlap_ratio                +0.5741

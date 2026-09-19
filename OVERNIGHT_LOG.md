@@ -91,3 +91,42 @@ Result: predictions went from 0/15 non-Separate (original) to 7/15 non-Separate 
 
 **Conclusion carried into the diagnosis doc**: the interface-region bug is a real, large, independently-confirmed contributor — fixing it alone moves the model from "degenerate" to "noisy but responsive" — but does not fully resolve the touching-model problem by itself; the label-noise issue (T1c) is very likely a second, independent, compounding factor, consistent with PROJECT_STATUS's original two-hypothesis framing, just with a different, code-provable first hypothesis than "MDE vs GT depth source."
 
+Wrote up full T1e diagnosis in `diagnosis/BINARY_MODEL_DIAGNOSIS.md` (hypotheses H1/H2/H3, verdicts, recommendation). Committed `7cb1eba` (scripts), `3c8deba` (diagnosis doc).
+
+## [T3] Wider prg_edge_error sweep
+
+Script: `diagnosis/scripts/sweep_prg_edge_error_SIM.py` (committed). Swept ALL adjacent pairs (via `enumerate_adjacent_pairs`, not just the 15 hand-picked ones) across all 6 worlds: 43 pairs total. Ground truth: `SDFGeometryRelationSource` (static-pose heuristic — the only ground truth available without a running physics sim; explicitly caveated in the script and output doc as not physics-verified, same caveat as T1's use of it).
+
+Results (`diagnosis/PRG_EDGE_ERROR_SWEEP_SIM.md`, `diagnosis/prg_edge_error_sweep_SIM.csv`):
+- prg_edge_error by gt_relation: Contact mean=0.194, Separate mean=0.111, Support mean=0.281 (all in [0,1], only 4 unique values across the sweep — expected, since `compute_prg_edge_error`'s confidence_term barely varies while the classifier is degenerate per T1).
+- Binary wrong-prediction rate: 79.1% (34/43) — consistent with T1's finding that the model is currently near-always-wrong on touching pairs.
+- AUROC(prg_edge_error, wrong-prediction) = 0.62, point-biserial = 0.20 — a real but weak signal.
+- Interpretation recorded in the doc: given the classifier's confirmed near-degeneracy (H3), this AUROC likely reflects `compute_prg_edge_error()`'s geometric_term (a raw depth-gap check) acting almost independently of classifier confidence, not the two-signal design working as intended. Should be re-run once H3 is fixed before drawing real conclusions.
+
+Committed `2593334`.
+
+## [T4] Model D + two-signal conformal gate — synthetic wiring rehearsal
+
+Checked for Person A's stats code first: `perception-calibration-gap/mock-pipeline/conformal_gate.py` and `gap_computer.py` exist (single-signal `ConformalGate` class, Gap-only nonconformity score) — proceeding was in scope per task instructions.
+
+Script: `rehearsal/model_d_and_two_signal_gate_REHEARSAL.py` (committed, new file, does not modify `conformal_gate.py`/`gap_computer.py`). Built a 43-row synthetic trial table (1 row per T3's real prg_edge_error value; Gap_initial/true_occlusion/failure all synthetic with a deliberately planted logit relationship, purely so Model D has something non-trivial to recover). Fit Model D (`failure ~ true_occlusion + Gap_initial + prg_edge_error + C(object_id)`, statsmodels logit) and a max-combination two-signal conformal gate (Gap and prg_edge_error each scaled by their own calibration-set 90th percentile, combined via max()), alongside the existing single-signal `ConformalGate` for comparison.
+
+Note: first attempt used `world_object_a` as `object_id` (19 unique groups over 43 rows) and hit a singular design matrix; fixed by grouping at the `world` level (6 groups) — logged as the one iteration this took, well within the 3-attempt budget. Final run: converged with a mild quasi-separation warning on one world-level dummy (expected at N=43, 8 parameters) but produced full output; `prg_edge_error`'s coefficient was the only one to reach p<0.05 (p=0.027) in this small, synthetic-planted sample — not a finding, the relationship was deliberately planted to test whether the fitting code could recover *something*.
+
+Every line of output is stamped "SYNTHETIC WIRING REHEARSAL -- NOT A RESULT." Committed `3f002ce`.
+
+## [T5] Documentation sync
+
+- `PREREG_AMENDMENTS_PROPOSED.md`: drafted (not applied to PREREG.md itself) two amendments — (A) structural-independence checkoff citing PROJECT_STATUS §2's AST audit, (B) flagging the object-count conflict, which turned out to be a genuine **three-way** conflict on closer reading (PREREG §5 original: 5 objects w/ remote; PREREG's own 2026-07-15 amendment: 5 objects w/ stapler; INTERFACE.md §2: "Option A" = 3 objects apple/purse/glass) rather than the two-way one PROJECT_STATUS §5 item 4 described. Flagged only, not resolved, per instructions.
+- `diagnosis/DATA_PROVENANCE_NOTE_PROPOSED.md`: exact proposed text for `classify_relation.py`'s docstring, `SCHEMA.md `'s §3b/§4, and `INTERFACE.md `'s §5 — all three currently cite the unrecoverable `training_data_v3_metric_only.csv` and/or a stale "SUPPORT_RELATIVE_HEIGHT_THRESHOLD is untuned" claim that was superseded by the trained Support sub-classifier in a prior session. Not applied — these are Person B's interface files.
+- `PROJECT_STATUS.md`: appended a new dated "§7 Overnight session — 2026-09-20" section at the end; sections 1-6 left untouched (confirmed via reading the diff before committing).
+
+Committed `f05aaf5`.
+
+## Final verification (pre-handoff)
+
+```
+git diff 2a6f362..HEAD --stat -- perception-calibration-gap/PREREG.md integration/prg_config.json relation_classifier/models/ "SCHEMA.md" "INTERFACE.md"
+```
+Empty output — all five confirmed byte-identical to this branch's starting commit. `2a6f362` is the commit this branch was created from (see Setup section above).
+

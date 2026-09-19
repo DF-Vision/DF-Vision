@@ -86,3 +86,84 @@ Ordered by dependency — each depends on the ones above it:
 - Do not let it retrain the binary touching model without an explicit decision from you first (per this session's consistent discipline: report findings, don't quietly fix consequential things). If step 1-3 above point toward retraining, that should come back as a proposal, not a fait accompli by morning.
 - Do not let it touch `integration/prg_config.json`'s `use_stub` value in the committed file — every verification this session used in-memory overrides specifically to avoid this, and that discipline should hold.
 - Do not treat any synthetic/dry-run output (this session's or a new overnight one) as citable evidence for C1/C1-ext/C4/C4-ext — every existing dry-run script already says this about itself; a new one should too.
+
+---
+
+## 7. Overnight session — 2026-09-20 (autonomous, branch `overnight/prg-diagnosis`)
+
+Full detail in `diagnosis/BINARY_MODEL_DIAGNOSIS.md`, `diagnosis/PRG_EDGE_ERROR_SWEEP_SIM.md`,
+`OVERNIGHT_LOG.md`, and `MORNING_HANDOFF.md`. This section only summarizes;
+those files are the source of truth.
+
+**§1's finding, updated**: the leading hypothesis this document previously
+named (model trained on `mde_predicted_z`, tested on `gazebo_range_gt`-style
+depth) could not be tested tonight — no DA-V2 checkpoint file exists in this
+repo and the `rclpy` runtime `depth_publisher.py` needs isn't installed here;
+logged as a blocker rather than guessed at. It is also weakened by new
+evidence: `extract_relation_features.py` has exactly one commit in its
+entire git history, and `PIPELINE_VALIDATION_MODE` has been `True`
+(`gazebo_range_gt`) in every version of that file that has ever existed —
+there is no git trace of the training CSV ever being generated in
+`mde_predicted_z` mode.
+
+A different, code-provable root cause WAS confirmed instead: `feat_boundary_sharpness()`
+and `feat_depth_gradient()` (both in `extract_relation_features.py`) define
+their "interface" region as effectively the full silhouette ring of BOTH
+objects, not the shared object-object boundary — so on every tested pair,
+these two features are dominated by each object's edge against the
+BACKGROUND, not against each other. On this session's ray-cast depth this
+produces `boundary_sharpness` z-scores of 14.5–43.6 (against the frozen
+model's own training-time scaler stats) in every single case, and
+`boundary_sharpness` carries the model's largest-magnitude coefficient —
+enough alone to saturate `predict_proba` toward "Separate" regardless of
+every other feature. A synthetic rehearsal correcting only this region
+(not the frozen model, not any committed file) restored real variation in
+the model's predictions (0/15 → 7/15 non-Separate on the same 15 staged
+pairs) and roughly doubled binary accuracy (27% → 60%), though it did not
+fully fix Contact-class predictions specifically — consistent with this
+document's already-on-record label-noise finding (heuristic_label
+disagrees with gazebo_contact on 60/101 of its own Contact calls) being a
+second, compounding, independent issue.
+
+**Practical upshot**: no depth source (real DA-V2 or otherwise) can be
+expected to fix the frozen model's current behavior on its own, because
+the primary confirmed defect is in feature computation, not depth source.
+A real fix needs both a `feat_boundary_sharpness`/`feat_depth_gradient`
+code change (Person B's file) AND a retrain of the frozen model against
+the corrected feature definition (the two must ship together, since the
+frozen scaler/model were fit on the old, buggy feature distribution) —
+proposed, not applied, in `diagnosis/BINARY_MODEL_DIAGNOSIS.md`'s
+recommendation section, pending your decision per this project's
+retrain-needs-a-human-decision rule.
+
+**Also newly confirmed** (git archaeology): `training_data_v3_metric_only.csv`
+— the file the frozen binary model was actually trained on, and the file
+`SCHEMA.md `/`INTERFACE.md `/`classify_relation.py` cite statistics
+against — was **never once committed to this repository**, on any branch,
+at any commit. The `.gitignore` added in the same commit as the model
+files explicitly excludes every OTHER generated intermediate CSV in that
+pipeline (`heuristic_vs_gazebo_comparison*.csv`, `flagged_objects.csv`,
+`*_gazebo_contacts.csv`, etc.); the v3 file fell through the same
+"generated files aren't committed" gap. This is stated plainly as
+unrecoverable rather than guessed at further. Proposed (not applied) doc
+fixes for the resulting stale citations are in
+`diagnosis/DATA_PROVENANCE_NOTE_PROPOSED.md`.
+
+**Other overnight findings**: a wider `compute_prg_edge_error()` sweep (43
+adjacent pairs across all 6 staged worlds, up from a handful of spot
+checks) found AUROC=0.62 between `prg_edge_error` and wrong-relation
+predictions — a weak positive signal, but per this session's own
+interpretation, likely an artifact of the classifier's current near-total
+degeneracy rather than evidence the two-signal design is working (see
+`diagnosis/PRG_EDGE_ERROR_SWEEP_SIM.md`). A synthetic wiring rehearsal
+(`rehearsal/model_d_and_two_signal_gate_REHEARSAL.py`) confirmed Model D
+and a max-combination two-signal conformal gate run end-to-end against
+real (non-stub) `prg_edge_error` values — code-path-only, not a
+statistical result. A three-way object-count conflict across PREREG.md
+(twice, disagreeing with itself) and INTERFACE.md was found and flagged
+(not resolved) in `PREREG_AMENDMENTS_PROPOSED.md`.
+
+**Untouched, confirmed**: `integration/prg_config.json`, every `.joblib`
+model/scaler file, and `perception-calibration-gap/PREREG.md` are
+byte-identical to this branch's starting commit (`2a6f362`) — verified via
+`git diff 2a6f362..HEAD --stat` on those exact paths, empty output.

@@ -1,0 +1,44 @@
+{
+  "trials": [
+    {
+      "trial_id": 0,
+      "subdir": "trial_0000",
+      "occluder_present": false
+    },
+    {
+      "trial_id": 1,
+      "subdir": "trial_0001",
+      "occluder_present": false
+    },
+    {
+      "trial_id": 2,
+      "subdir": "trial_0002",
+      "occluder_present": true
+    },
+    {
+      "trial_id": 3,
+      "subdir": "trial_0003",
+      "occluder_present": true
+    },
+    {
+      "trial_id": 4,
+      "subdir": "trial_0004",
+      "occluder_present": false
+    },
+    {
+      "trial_id": 5,
+      "subdir": "trial_0005",
+      "occluder_present": false
+    },
+    {
+      "trial_id": 6,
+      "subdir": "trial_0006",
+      "occluder_present": false
+    },
+    {
+      "trial_id": 7,
+      "subdir": "trial_0007",
+      "occluder_present": false
+    }
+  ]
+}

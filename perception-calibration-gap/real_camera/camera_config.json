@@ -1,0 +1,35 @@
+{
+  "source": "live",
+  "_source_comment": "'live' | 'replay' -- overridden at the CLI by --replay <dir>, which forces 'replay' regardless of this file's value. This file's own 'source' only matters when capture_and_gap.py is run with no --replay flag.",
+
+  "sdk": {
+    "backend": "pyorbbecsdk",
+    "color_resolution": [1280, 720],
+    "color_format": "MJPG",
+    "depth_resolution": [1280, 800],
+    "depth_format": "Y16",
+    "fps": 30,
+    "_comment": "Matches orbbec_capture.py:open_pipeline_with_d2c()'s current hardcoded values -- moved here so the live path is config-driven, not hardcoded in capture_and_gap.py. orbbec_capture.py itself still owns the pyorbbecsdk call sequence (task rule: 'do NOT modify tsdf_fusion.py/occlusion_estimator.py/gap_computer.py to fit this file'; orbbec_capture.py is the adapter, this config parameterizes it)."
+  },
+
+  "ros_topics_if_used": {
+    "_status": "NOT CURRENTLY WIRED. This repo's live capture path calls pyorbbecsdk's Pipeline/Config API directly (orbbec_capture.py), not ROS. These topic names are recorded here ONLY so that if a ROS-based Orbbec driver (e.g. the 'orbbec_camera' ROS 2 wrapper) is substituted later, whoever wires it has a documented starting point to verify against the actual device -- per HARDWARE_CHECKLIST.md's discipline of no un-verified assumptions left as silent TODOs.",
+    "color_topic": "/camera/color/image_raw",
+    "depth_topic": "/camera/depth/image_raw",
+    "depth_registered_topic": "/camera/depth_registered/points",
+    "camera_info_topic": "/camera/color/camera_info",
+    "verify_on_device": "Run `ros2 topic list` (or `rostopic list` for ROS1) on the machine with the Gemini 2 driver running and confirm these exact names before using them anywhere -- NOT verified in this session (no rclpy installed, no ROS driver wired in this repo at all -- see project_closure/LOG.md C0 entry)."
+  },
+
+  "depth_units": {
+    "on_disk": "uint16 PNG, millimeters, 0=invalid",
+    "in_memory": "float32, meters",
+    "conversion_function": "perception-calibration-gap/real_camera/depth_io.py:mm_array_to_meters (and mm_png_to_meters for disk reads) -- the ONE place this conversion happens",
+    "plausibility_guard": "perception-calibration-gap/real_camera/depth_io.py:validate_depth_meters -- rejects median > 20m"
+  },
+
+  "replay": {
+    "fixture_layout_doc": "perception-calibration-gap/real_camera/replay_source.py's module docstring",
+    "default_fixture_dir": "perception-calibration-gap/real_camera/fixtures/replay_synthetic_v1"
+  }
+}

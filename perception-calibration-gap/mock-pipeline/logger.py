@@ -140,6 +140,12 @@ class TrialRecord:
                                                   # -- task_success can differ from `failure==0` if the
                                                   # paper ever separates "grasped" from "task completed"
     notes: Optional[str] = None
+    stage_timings_ms: Optional[dict] = None      # EXTENSION: project/closure session, C2. Per-stage
+                                            # wall-clock timing for --replay/live real-camera trials,
+                                            # e.g. {"capture": 1.2, "marker_pose": 0.4, "tsdf": 12.1,
+                                            # "gap": 0.3, "prg": 2.0, "logger_append": 0.1} -- keys are
+                                            # capture_and_gap.py's own stage names, not a fixed schema.
+                                            # Additive, default None, same discipline as every extension above.
     prg_model_version: Optional[str] = None      # "legacy" | "v2" | "geometric_c1" | ... -- which
                                                   # classify_relation.py/compute_prg_edge_error.py
                                                   # config was active when this trial's prg_edges (if

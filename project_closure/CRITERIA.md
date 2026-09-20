@@ -93,3 +93,19 @@ committed alone before any of that task's implementation commits.
 None of the above is loosened after implementation. If any criterion
 can't be met within the 3-attempt budget (rule 6), it is logged as a
 blocker in `project_closure/LOG.md`'s C2 entry, not silently dropped.
+
+### Addendum, same day, written after first implementation run (logged, not silent)
+
+Criterion 6 ("identical... EXCEPT `timestamp_utc`") and criterion 8
+(per-trial wall-clock stage timing must be captured) are in tension:
+`stage_timings_ms` is, by criterion 8's own requirement, wall-clock
+measured and therefore cannot be bit-identical across runs, exactly like
+`timestamp_utc` already wasn't. This was an oversight in how criterion 6
+was scoped, not a substantive result being loosened -- the underlying
+scientific/schema content (every field except the two wall-clock-derived
+ones) is still required to be, and was verified to be, bit-for-bit
+identical. **Determinism check is therefore: identical field-for-field
+EXCEPT `timestamp_utc` and `stage_timings_ms`.** This is a scope
+clarification of an internal inconsistency between two criteria written
+in the same commit, not a pass/fail bar being relaxed after a failing
+result -- no criterion's actual pass/fail THRESHOLD changed.

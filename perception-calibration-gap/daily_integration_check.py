@@ -193,6 +193,9 @@ def main():
         "scene_condition", "repeat_id", "controller_git_hash",
         "grasp_point_xyz_camera", "grasp_point_xyz_robot", "pose_source",
         "task_success", "notes", "prg_model_version",
+        # C2 (project/closure session) addition -- legitimately None here,
+        # this check never exercises the real-camera/--replay path.
+        "stage_timings_ms",
     }
     bad_fields = []
     for f in fields(record):

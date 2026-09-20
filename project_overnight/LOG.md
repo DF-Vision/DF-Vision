@@ -213,3 +213,52 @@ session** -- the scaffold's own code was read and is well-documented
 with explicit fallback reporting, but I did not personally re-confirm a
 full pass this session. Flagged honestly rather than asserting success.
 No real detector training was attempted or claimed, per task scope.
+
+## [T7] Gap-only statistics synthetic recovery check — verified EXISTS code, found + fixed one real bug
+
+`analysis/analysis_c1.py` (Models A/B/C, VIF, bootstrap AUC delta,
+per-object table), `mock-pipeline/mock_data_generator.py` (planted vs
+null generator via `gap_signal_multiplier`), `mock-pipeline/conformal_gate.py`
+(`ConformalGate`, 70/30 split, per-object coverage) all confirmed EXISTS
+by reading; NOT rebuilt. Ran `project_overnight/scripts/t7_synthetic_recovery_check.py`
+against the pre-committed `project_overnight/CRITERIA.md` T7 bars.
+
+**shap import broken** in this environment (see T0/STATE.md) --
+`analysis_c1.py` imports `shap` at module level, blocking even
+`fit_models()`. Worked around with an in-process `sys.modules['shap']`
+stub (does NOT touch the installed environment) so everything except
+`rf_shap_check()` itself could be verified; `rf_shap_check()` remains
+genuinely UNVERIFIED this session, stated plainly in the script's own
+printed output, not silently papered over.
+
+**Bug found and fixed**: `gap_signal_multiplier=0.0` (the documented
+"null" setting) also zeroed the underlying detector-noise scale, making
+`Gap_initial` identically 0.0 for every row -- a constant column causing
+`smf.logit()` to hit a singular Hessian 100/100 times in a 100-repeat
+null-data check. Fixed by decoupling noise scale (always full) from
+`gap_signal_multiplier` (still scales only Gap's coefficient in the
+failure logit, per the file's own documented intent). After the fix:
+null-data false-positive rate is 5/100 (5.0%) -- essentially exact
+nominal-alpha calibration.
+
+**Results against CRITERIA.md's bars** (all SYNTHETIC, not citable as
+C1/C1-ext/C4/C4-ext evidence):
+- Planted-effect sign recovery at realistic N (~90 trials, 3 objects):
+  30/50 (60%) -- **FAILS** the pre-committed 90% bar. Contextualized, not
+  excused: this is consistent with and empirically CONFIRMS PREREG.md's
+  own already-disclosed power analysis (12-15% power at N=195 in the
+  original 5-object plan) -- a genuine, pre-known power problem, not a
+  new implementation bug.
+- Conformal coverage on planted data (single seed): 0.955 vs 0.900
+  target, 5.5pp outside the +-5pp tolerance -- **FAILS** narrowly; not
+  repeated across seeds this session (time budget), so this single
+  result should not be over-interpreted either way.
+- Null-data false-positive rate: 5.0%, well-calibrated -- **PASS**
+  (informational per CRITERIA.md, not a hard gate, but a strong positive
+  signal that the testing procedure's Type-I error control is sound).
+
+**Regression caught and fixed**: re-running `daily_integration_check.py`
+after T9's `TrialRecord` extension surfaced a real regression (the new
+fields weren't in its `allowed_none` allowlist) -- fixed, re-verified
+PASS. Logged as a genuine catch of T11-style verification value, not
+hidden.

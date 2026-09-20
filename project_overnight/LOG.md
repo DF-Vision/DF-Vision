@@ -51,3 +51,35 @@ substantially EXISTS already (harden, do not rebuild); T9 needs a
 schema EXTENSION (additive fields) not a rewrite.
 
 Committed: `project_overnight/STATE.md`, this log entry.
+
+## [T1] Camera-to-arm extrinsic calibration — MISSING -> built
+
+Implemented `perception-calibration-gap/calibration/`:
+- `compute_extrinsic_calibration.py`: Kabsch/SVD rigid-transform solver,
+  det(R)=+1 verified, held-out validation split, degeneracy guard
+  (covariance singular-value ratio), units guard (>5m magnitude refused),
+  held-out RMS>2cm refuses to save. Outputs YAML `T_base_from_camera_optical`
+  (4x4, meters).
+- `capture_marker_points.py`: marker-pose helper, REUSES
+  `real_hardware_adapter.detect_markers()`/`CameraCalibration` (does not
+  reimplement ArUco/solvePnP), writes camera-frame tvecs into
+  `point_pairs.csv`.
+- `camera_intrinsics_template.yaml`, `point_pairs_template.csv` (written
+  on first run) for the hand-capture workflow.
+
+Verified with hand-derived math: `kabsch()` recovers a known 3D rotation
+(0.35 rad about Z) + translation to <1e-8 error on noiseless synthetic
+points (checked interactively before writing formal tests).
+
+Tests (`tests/test_extrinsic_calibration.py`, 8/8 passing):
+```
+$ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/test_extrinsic_calibration.py -q
+8 passed in 0.08s
+```
+Covers: known-transform recovery (noiseless + noisy), too-few-points
+refusal, collinear-input refusal, a corrupted-point-in-held-out-set
+refusal (50cm injected error, found via seed search to land in the
+held-out split), mm-vs-m units guard, proper-rotation (det=+1) check.
+
+No motor/arm code touched — this is pure geometry/math, satisfies hard
+rule 1 trivially (no arm-facing code in this task).

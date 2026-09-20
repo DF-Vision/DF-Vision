@@ -279,3 +279,99 @@ substantially bigger compute/time cost than the idealized-edge tests
 above), this is logged as a blocker with the exact command attempted,
 and criteria 1-6 (which don't require the full world sweep) still stand
 as this task's minimum bar.
+
+---
+
+## C3 -- YOLO pipeline full verification, software only (2026-09-21)
+
+Scope confirmed by reading `perception-calibration-gap/yolo/` in full
+first: `train_yolo_scaffold.py` (mechanics scaffold, network-aware
+fallback, EXISTS substantially) and `per_object_gate.py` (per-object
+acceptance gate, EXISTS, 6/6 tests from the prior session, but
+thresholds are module-level constants, not config -- a real gap against
+this task's explicit "(e)" requirement). No auto-labeler exists anywhere
+in the repo (confirmed: `grep -rl "auto.label"` only matches
+`detector_validation.py`, an unrelated open-vocab detector validator, and
+`train_yolo_scaffold.py`'s own docstring mentioning the CONCEPT, not an
+implementation) -- MISSING, built fresh. No grouped train/val split
+exists (`generate_synthetic_yolo_dataset`'s split is `i < n_train`,
+sequential by image index, no session/scene concept at all) -- PARTIAL,
+extended.
+
+### Acceptance criteria (fixed before implementation)
+
+**(a) Label round trip**: a new `auto_label_from_markers.py` computes a
+YOLO-format label (class_id + normalized xc/yc/w/h) from a detected
+ArUco marker's corners, reusing the SAME dilation convention
+`capture_and_gap.py`'s `build_bbox_mask_from_corners` already uses (train/
+serve parity: the placeholder-box convention must be identical wherever
+a marker stands in for a real detector box, not reinvented per script).
+A test generates synthetic images (real `cv2.aruco.generateImageMarker`,
+same technique as C2's fixtures) with a KNOWN box for apple/purse/glass
+(marker placed at a known pixel location, box = the SAME dilation formula
+applied to the known corners -- so "ground truth" and "auto-labeler
+output" are computed via the identical formula, and the assertion is that
+decoding the WRITTEN YOLO label file byte-for-byte reproduces that box
+within 1px after the normalize/denormalize round trip). A contact sheet
+(boxes drawn on images, SYNTHETIC-stamped filename) is saved for visual
+inspection.
+
+**(b) Class index mapping, single source of truth**: a new
+`class_map.json` (`{object_name: index}`) is the ONLY place the
+apple/tennis_ball/purse/glass/remote -> index mapping is defined.
+`train_yolo_scaffold.py`'s `STUDY_OBJECT_NAMES`, `auto_label_from_markers.py`'s
+class-id assignment, and `per_object_gate.py`'s object-name handling all
+either import this file directly or are tested to be consistent with it
+-- a test asserts the labeler's class assignment and the dataset yaml's
+`names:` list, read independently, are IDENTICAL.
+
+**(c) Grouped split by session/scene**: `generate_synthetic_yolo_dataset`
+(or a new grouped variant) assigns each synthetic image to a session/scene
+ID (several images per session, mirroring a real capture session), and
+splits train/val/held-out BY SESSION, never by image. A test asserts:
+zero session-ID overlap between the resulting splits, and that the same
+seed produces the identical split across two runs (determinism).
+
+**(d) Real training loop, 2 epochs, CPU, "code check not detector
+result"**: an ACTUAL `model.train(...)` call (not mocked, not skipped) on
+the grouped-split synthetic dataset, `epochs=2`, small `imgsz` for speed.
+Confirms: training loss is available per-epoch and does not increase
+monotonically across the 2 epochs (a weak but genuine "the loop is
+learning something," not a strict convergence claim over just 2 epochs);
+`last.pt`/`best.pt` checkpoints are written and reloadable
+(`YOLO(checkpoint_path)` succeeds); a `model.predict()` call on a held-out
+image runs and returns a result object without raising. Every print/log
+line from this run states plainly that this is a CODE CHECK on synthetic
+solid-color-box data, not a detector-quality result -- matching this
+session's SYNTHETIC-stamping discipline throughout.
+
+**(e) Per-object acceptance-gate evaluator**: (i) known-answer tests --
+a tiny hand-constructed fixture of predicted vs. ground-truth boxes (2-3
+per object) where precision/recall/AP50 are computed BY HAND first (in
+the test's own docstring/comments, before running the code) and a new
+`detection_metrics.py` (IoU matching, threshold 0.5) is asserted to
+reproduce those exact hand-computed numbers -- not just fed
+already-computed metric dicts as the existing 6 tests do (those stay,
+unchanged, as the aggregate-vs-per-object gate-LOGIC tests; this is a
+new, complementary layer testing the metric-COMPUTATION itself). (ii)
+Already exists and passes: aggregate-pass/one-object-fails still fails
+the gate. (iii) **Thresholds moved out of code literals**: a new
+`per_object_gate_config.json` (precision/recall/AP50 thresholds, default
+values identical to the current `0.5`/`0.5`/`0.5` constants so existing
+behavior is unchanged) is read by `per_object_gate.py`; a regression test
+confirms the default config reproduces the exact same pass/fail verdicts
+as the hardcoded-constants version did.
+
+**Legacy/regression**: `tests/test_per_object_gate.py`'s existing 6 tests
+keep passing UNMODIFIED (config-driven thresholds default to the same
+values). `train_yolo_scaffold.py`'s existing network-fallback discipline
+(try real, log clearly if falling back) is preserved, not removed, even
+though network is confirmed available this session (C0) -- the fallback
+path stays exercised/tested for whoever runs this in a restricted
+environment later.
+
+If the real 2-epoch training run (d) cannot complete within a reasonable
+time budget on this machine's CPU, this is logged as a blocker with the
+exact command and wall-clock time attempted, and criteria (a)-(c) and
+(e) (all fully achievable without a real training run) still stand as
+this task's minimum bar.

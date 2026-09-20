@@ -217,3 +217,87 @@ Five items, per this session's task list, each proposed as a dated
 > from you.
 >
 > - [ ] Acknowledge the 4-session PRG history as the canonical record (date: ______)
+
+---
+
+## Proposed Amendments — 2026-09-21 (`project/closure` session)
+
+Three items, extending (not replacing) the record above.
+
+### 6. PRG history, updated: the C1 gap-estimator bug is fixed, the E3 negative result is NOT
+
+> ## Amendment — 2026-09-21 (proposed, pending your review)
+>
+> **PRG signal history, item 5 above, extended with a 5th finding**
+>
+> This session (C4) traced and fixed the root cause of the gap estimator
+> (`explore/scripts/geometric_prg_error.py`) returning exactly 0.0 on an
+> idealized single-edge scene (item 5's 4th finding): the ring was
+> `dilated & ~eroded`, a band straddling the bbox border with ~40-50% of
+> its pixels trivially same-surface by construction, guaranteeing a
+> low-percentile statistic near 0 regardless of the true gap. Fixed by
+> restricting the ring to exterior-only pixels
+> (`dilated & ~mask`). This fix was then verified against 4 new idealized
+> scenes (clean step-edge, two-object-touching-with-background,
+> separated-with-real-gap, background-only) — all now pass exactly.
+>
+> **Critically, re-running `explore/CRITERIA.md`'s already-pre-committed
+> criteria UNCHANGED on the same 5 non-held-out worlds shows the
+> decisive negative result from item 5's finding 4 (`explore/E3_FINDINGS.md`)
+> is UNCHANGED, and on the validity metric (AUROC), measurably WORSE**
+> (C1: 0.457 -> 0.280, further below chance). Sensitivity (criterion b)
+> remains exactly 0/5 worlds for all three candidates, identical to
+> before. This confirms the idealized-edge bug and the real-scene
+> background-contamination mechanism (E3's own diagnosis: an
+> omnidirectional ring/bbox with no knowledge of which direction a
+> specific neighbor lies is dominated by whichever direction has the
+> closest thing, frequently far background) are DISTINCT root causes —
+> fixing the first did not fix, and by one metric worsened, the second.
+> **No candidate is promoted. `use_stub` remains `true`.** Full detail:
+> `project_closure/LOG.md`'s C4 entry,
+> `project_closure/results/c4_e3_rerun_SIM_output.txt`.
+>
+> - [ ] Acknowledge the updated (5-finding) PRG history and the C4
+>       verdict (date: ______)
+
+### 7. Power-analysis conclusions (C6): C1's planned study is severely underpowered
+
+> ## Amendment — 2026-09-21 (proposed, pending your review)
+>
+> **C1's Model B significance test, at the mock generator's own assumed
+> effect size, is severely underpowered at every N tested — including
+> 16x the planned N**
+>
+> A power analysis at task-mandated scale (1000 null datasets, 500
+> planted datasets per effect size, N=90/120/180 and an extended sweep
+> to N=1440) found: power at the planned N=90 is 0.080 (target: 0.8);
+> N=120 gives 0.090; N=180 gives 0.107; even N=1440 (16x the plan) only
+> reaches 0.587. None of the tested effect-size multipliers (0.25x to
+> 2x the assumed effect) clear 0.8 power at N=90. This was verified NOT
+> to be an implementation bug: an implausibly large effect-size
+> multiplier (16x) does drive power to 1.0 at N=90, confirming the
+> power-analysis code itself is sound. Separately, the model's
+> confidence intervals ARE well-calibrated (exact-binomial null
+> false-positive rate 4.4% [95% CI 3.2%-5.9%], CI coverage 95-97% across
+> effect sizes) — the underpowering is specifically about the
+> `p<0.05`-style significance test at realistic N, not a sign the
+> statistics code is broken. Full detail:
+> `project_closure/LOG.md`'s C6 entry,
+> `project_closure/scripts/c6_statistics_SYNTHETIC_output.txt`.
+>
+> This is a genuinely consequential finding for what C1 can claim with
+> feasible real-data N — flagged here for your decision on how to
+> proceed (larger N than currently planned, a different/less
+> conservative significance criterion, or reporting effect estimates
+> with honest wide CIs rather than a significance claim), not resolved
+> by this session.
+>
+> - [ ] Acknowledge the power-analysis finding and decide how C1's
+>       claim should be framed given it (date: ______)
+
+### 8. Object-count conflict — still unresolved, not re-litigated here
+
+Restated as a pointer only (see items 3-4 above for the full detail,
+`project_closure/LEDGER.md` ledger item #8 for this session's explicit
+choice not to touch it): three documents still disagree (5 objects /
+5-with-swap / 3 objects) as of this session's end. Not resolved.

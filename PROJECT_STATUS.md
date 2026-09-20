@@ -416,3 +416,71 @@ byte-identical to session start (`project_overnight/LOG.md`'s T0 SHA256
 baseline, re-checked in `project_overnight/MORNING_HANDOFF.md`). No arm
 or motor code was executed; every grasp-facing script defaults to
 dry-run and `--i-am-supervising` was never passed.
+
+---
+
+## 12. Closure session — 2026-09-21 (autonomous, branch `project/closure`)
+
+Full detail: `project_closure/LEDGER.md`, `project_closure/CRITERIA.md`,
+`project_closure/LOG.md`, `project_closure/MORNING_HANDOFF.md`. This
+session's purpose was CLOSURE — finish everything §11's session deferred
+or flagged, and prove the existing guards actually work (mutation
+testing), rather than covering new ground.
+
+**Closed (were flagged/deferred in §11)**: T4's `--replay` mode
+(`capture_and_gap.py`, config-driven camera source, a documented depth-
+unit conversion+guard, synthetic fixtures with 4 good + 4 deliberately
+faulted trials, 14 tests) — also found and fixed that `capture_and_gap.py`
+had never actually been importable in this environment before this
+session (a broken `sys.path`, not just untested). `rf_shap_check()`
+(guarded `shap` import so `analysis_c1.py` is importable regardless,
+a permutation+tree-native-importance fallback with an explicit
+`importance_method` marker, verified against real SHAP in an isolated
+project-local venv — found a genuine N=90 sample-size sensitivity in
+pooled SHAP ranking along the way). `train_yolo_scaffold.py`'s
+mechanics, run for real this time (2-epoch training, all three loss
+components confirmed decreasing, checkpoints save/reload/predict) —
+plus a genuinely missing auto-labeling pipeline, a class-index single
+source of truth, a session-grouped train/val split, and detection-metrics
+known-answer tests, none of which existed before this session.
+
+**T6's C1 gap estimator, fixed and re-evaluated**: root cause traced
+(the ring straddled the bbox border, ~40-50% trivially same-surface by
+construction) and fixed (exterior-only ring). Re-running
+`explore/CRITERIA.md` unchanged shows the fix does NOT change, and by
+one metric worsens, the E3 negative result on real multi-object scenes —
+the idealized-edge bug and the real-scene background-contamination
+mechanism are distinct root causes.
+
+**Mutation-tested 10 guards** (calibration solver, lookup-table/out-of-
+reach, dry-run/`--i-am-supervising`, marker-size config, template-CSV
+guard, Model D stub-exclusion, session scheduler, `data_quality_report`,
+controller-freeze check, depth-unit guard): 30 mutations, 30/30 killed
+after closing one real test gap (joint-limit boundary inclusivity) found
+along the way — plus a genuine harness bug (stale bytecode cache could
+have produced false "killed" results) found and fixed mid-task.
+
+**Re-established the synthetic statistics claims at the task's mandated
+scale** (1000 null / 500×3 planted / 100+ repeated conformal splits, up
+from the prior session's 50-100): the null-generator fix holds up at
+20x the repeat count; a genuinely important new finding — C1's planned
+study is severely underpowered (0.08-0.11 power at N=90-180, still only
+0.587 at N=1440) at the mock generator's own assumed effect size,
+verified not to be an implementation bug. Also found and fixed a
+literally-vacuous `assert ... or True` split-discipline check in
+`analysis_c4.py`.
+
+**Built an end-to-end integration rehearsal** (SYNTHETIC) chaining
+replay → Gap+PRG-stub → calibration (real solver, synthetic known
+transform) → lookup-table dry-run → logger → data-quality (confounding +
+stub-counts + a controller-freeze check proven to actually fire) →
+Gap-only stats → conformal gate — using only this session's already-
+verified code, added to the test suite so it stays green.
+
+**Untouched, confirmed**: `integration/prg_config.json` (`use_stub: true`),
+every legacy/v2 `.joblib`, `perception-calibration-gap/PREREG.md`,
+`SCHEMA.md `, `INTERFACE.md ` all byte-identical to session start (SHA256
+baseline in `project_closure/LOG.md`'s C0 entry, re-checked in C10). No
+arm or motor code was executed; every grasp-facing test asserts the
+`MotorInterface` mock is called zero times in dry-run and
+`--i-am-supervising` was never passed.

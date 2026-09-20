@@ -845,3 +845,58 @@ empty.
 **All 6 criteria met.**
 
 ---
+
+## C9 — Schema and documentation closure
+
+No CRITERIA.md section for this task (it's documentation reconciliation,
+not code with a pass/fail bar) — logged directly.
+
+### What was found
+
+- `perception-calibration-gap/README.md` existed but was **completely
+  empty (0 bytes)** — genuinely never written, not a duplicate to avoid.
+- `logger.py`'s `TrialRecord` was diffed field-by-field against
+  `SCHEMA_AMENDMENT_PROPOSED.md`'s existing addenda: only this session's
+  own new `stage_timings_ms` field (C2) was undocumented there.
+- `PREREG_AMENDMENTS_PROPOSED.md` already covered Gap-only-primary,
+  Model-D-conditional, and the object-count conflict (items 1-3, from
+  the prior `project/overnight-hardening` session) — not duplicated;
+  extended with 3 NEW items this session's own work produced.
+
+### What was written (all as proposals/addenda, `PREREG.md`/`SCHEMA.md `/`INTERFACE.md ` never edited in place, confirmed by `git diff` below)
+
+- `SCHEMA_AMENDMENT_PROPOSED.md`: new addendum for `stage_timings_ms`,
+  plus a note that this session's new scripts were diffed against
+  `TrialRecord` and found no other schema gap.
+- `PREREG_AMENDMENTS_PROPOSED.md`: 3 new dated items — (6) the updated
+  PRG history (C4's fix + the unchanged/worse E3 re-run verdict), (7) the
+  C6 power-analysis underpowering finding (the session's most
+  consequential statistical result), (8) a one-line pointer confirming
+  the object-count conflict is still unresolved (not re-litigated).
+- `PROJECT_STATUS.md`: appended (never rewrote) dated section 12
+  summarizing this whole session.
+- `perception-calibration-gap/README.md`: filled in for the first time —
+  "how to run everything," one command per script/figure/table, grouped
+  by stage. **Every command was actually run this session to confirm it
+  works as written** (not just written from reading source) — this
+  caught two real usability bugs: `mock_data_generator.py` and
+  `hand_calc_validation.py` both use a path relative to the CURRENT
+  WORKING DIRECTORY (not the script's own `__file__`), so running them
+  from the repo root silently writes/reads the wrong location (confirmed:
+  running `mock_data_generator.py` from repo root created a stray
+  `mock-pipeline/` directory there, cleaned up before committing). Fixed
+  in the README with explicit `cd perception-calibration-gap &&` prefixes
+  for exactly those two commands; every other command confirmed to work
+  from the repo root as documented.
+- `REPRODUCE.md` (repo root, new): skeleton mapping Person A's and
+  Person B's outputs to commands, with an explicit "not yet producible"
+  section (real detector quality, real-depth PRG behavior, failure
+  prediction, real calibration residual).
+
+Full suite unaffected by this task (docs-only): `140 passed, 1 skipped`.
+`git diff` on protected files: empty (including `PREREG.md`/`SCHEMA.md `/
+`INTERFACE.md ` themselves — only the `*_PROPOSED.md` and
+`PROJECT_STATUS.md` files were touched, matching the project's
+propose-don't-edit-in-place discipline).
+
+---

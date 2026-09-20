@@ -97,3 +97,31 @@ Proposed `SCHEMA.md ` Section 1/3b text: add a row for each field above
 with the same phrasing style already used there. Not applied — `SCHEMA.md `
 is Person B's file, pending her review, same discipline as every prior
 addendum in this file.
+
+## Addendum — 2026-09-21 (`project/closure` session)
+
+`logger.py`'s `TrialRecord` extended additively once more (C2 --
+`--replay` mode for the live pipeline), one new Optional field, default
+`None`, `REQUIRED_FIELDS` unchanged, all prior self-tests/callers
+unaffected (`daily_integration_check.py`'s `allowed_none` set updated to
+include it for the same reason as every prior extension):
+
+```
+stage_timings_ms: dict | None
+Per-trial wall-clock timing for real-camera trials (live capture or
+--replay), keyed by capture_and_gap.py's own stage names (e.g.
+"capture_or_load", "marker_pose", "tsdf", "gap", "prg", "logger_append"
+-- not a fixed schema, whatever stages that trial actually reached).
+None for any trial not produced by capture_and_gap.py (e.g. MuJoCo mock
+trials, which have no real-camera timing to report).
+```
+
+Also reconciled this session: `logger.py`'s full field list was diffed
+against every column this session's own new scripts read or write
+(`e2e_integration_rehearsal_SYNTHETIC.py`, `analysis_c4.py`,
+`data_quality_report.py`) -- no other gap found; every column those
+scripts touch already exists on `TrialRecord`.
+
+Proposed `SCHEMA.md ` Section 1 text: add a row for `stage_timings_ms`
+with the phrasing above. Not applied -- `SCHEMA.md ` is Person B's file,
+pending her review, same discipline as every prior addendum in this file.

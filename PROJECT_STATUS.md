@@ -293,3 +293,63 @@ identical by SHA256 to this session's start (`retrain/BASELINE.md` vs
 `retrain/R7_VERIFICATION.md`); `integration/prg_config.json`, `PREREG.md`,
 and Person-A's `conformal_gate.py`/`gap_computer.py` all confirmed
 untouched via `git diff`.
+
+---
+
+## 10. Exploration session — 2026-09-20 (autonomous, branch `explore/geometric-prg-error`)
+
+Full detail: `explore/E1_FINDINGS.md`, `explore/E3_FINDINGS.md`,
+`MORNING_HANDOFF_4.md`. Two threads, both concluded with pre-committed,
+un-softened negative or mixed results.
+
+**Thread 1 (E1) — is the §9 Contact-recall ceiling a label problem or a
+feature problem?** Computed ground-truth geometric "oracle" features
+(true 3D surface gap, vertical offset, horizontal overlap, contact-normal
+alignment) directly from SDF geometry — no camera, no depth, no
+`LiveDepthFeatureSource` involvement at all — and re-ran the same
+leave-one-world-out CV as §9's retrain. **A plain logistic regression on
+oracle features recovered 0.649 CV Contact recall, versus 0.00-0.27 for
+every depth-derived candidate in §9.** This shifts the balance of
+evidence toward "the depth-derived features are lossy," not "Contact and
+Support are physically indistinguishable classes" — true-gap
+distributions for Contact vs Separate are cleanly separated (medians
+1.2mm vs 35.5mm), arguing against a label-tolerance explanation. The
+result is not clean, though: the oracle model's Contact recall dropped to
+0/4 on the held-out world, and overall balanced accuracy (0.826 CV) fell
+just short of the pre-committed 0.85 "succeeds" bar — reported as a
+genuine middle ground, not rounded up.
+
+**Thread 2 (E2/E3) — can `prg_edge_error` be computed without the broken
+classifier at all?** Implemented three classifier-free geometric
+candidates (gap-uncertainty, boundary-sharpness-ambiguity, and a fixed
+combination) behind a new, off-by-default config switch
+(`relation_classifier/prg_edge_error_config.json`, separate from
+`integration/prg_config.json`). **Decisive negative result against
+pre-committed gates**: none of the three candidates showed any noise/blur
+sensitivity (0 of 5 worlds cleared the sensitivity bar for any
+candidate), and validity AUROC was at or below chance (0.457-0.486) for
+distinguishing accurate from inaccurate gap estimates. Diagnosed the
+mechanism directly: sampling a ring around a target's own bounding box
+(the only interface the classifier-free design permits) inherits the
+same background-contamination pathology found in two prior sessions'
+audits of `feat_boundary_sharpness` — without knowing which direction a
+specific neighbor lies, the ring is dominated by background, not the
+touching partner. Per the module's own pre-committed discipline (formula
+fixed before running, not adjusted after seeing results), this was not
+patched in this session — logged as a specific, fixable-in-principle
+proposal for later.
+
+**No promotion of anything**: `relation_model_version` stays "legacy",
+`prg_edge_error_mode` stays "classifier" (its committed default).
+`integration/prg_config.json`, all `.joblib`/CSV artifacts, `PREREG.md`,
+and Person-A's files confirmed untouched (`explore/E4_VERIFICATION.md`).
+
+**What's durable from this session regardless of the negative results**:
+a from-scratch, camera-independent geometric oracle sampler
+(`explore/scripts/oracle_geometry.py`) usable for future feature-design
+work; a precisely diagnosed, generalizable failure mode (bbox-ring
+background contamination) that now explains a recurring pattern across
+three separate feature-design attempts in this project's history; and
+`explore/REAL_CAPTURE_PROTOCOL_V2.md`, a ready-to-run protocol for
+measuring real gaps by hand, which is the only way left to test whether
+any of this generalizes beyond simulation.

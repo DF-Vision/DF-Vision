@@ -58,3 +58,46 @@ not reframed after the fact.
 
 - [ ] Human review of `retrain/GATES_RESULTS.md`'s recommendation
       (date: ______)
+
+## Proposed Amendment — 2026-09-20 (proposed, pending your review) — explore/geometric-prg-error session
+
+**`prg_edge_error`'s viability for C4-ext/Model D: four consecutive
+sessions, four negative or inconclusive results — flagged for a scoping
+decision, not resolved here**
+
+This amendment exists to make a pattern visible that is easy to lose
+across separate session write-ups: `prg_edge_error` (feeding C4-ext's
+two-signal conformal gate and Model D per the 2026-07-14 amendment above)
+has now been examined four times, by four different approaches, with no
+approach producing a working signal:
+1. The original classifier-confidence-based `compute_prg_edge_error()`
+   depends on a binary touching classifier that predicts "Separate" on
+   effectively all tested pairs (multiple sessions, see PROJECT_STATUS.md
+   §1, §7, §8).
+2. A full retrain attempt on clean, physics-verified labels, with
+   train/serve parity enforced by construction, still failed 5 of 7
+   pre-committed gates (§9; `retrain/GATES_RESULTS.md`).
+3. An oracle-ceiling check (this session, §10/E1) showed the classifier's
+   own INPUT FEATURES are likely lossy — true geometry recovers real
+   signal the depth-derived features don't — which is informative but
+   does not itself produce a working `prg_edge_error`.
+4. Three classifier-free geometric candidates (this session, §10/E2-E3)
+   were built and evaluated against pre-committed, un-softened gates —
+   all three failed decisively (validity AUROC at or below chance).
+
+**This is disclosed now, per this project's stated discipline of
+reporting null results honestly rather than reframing them, specifically
+because it bears on C4-ext's viability as a contribution.** No side is
+being picked here — it may still be that a fifth approach (e.g., a fixed
+version of the classifier-free candidates per `explore/E3_FINDINGS.md`'s
+diagnosed mechanism, or real DA-V2/real-camera depth, both untested so
+far) succeeds. But four consecutive negative/mixed results is a pattern
+that should inform a deliberate, human decision about whether C4-ext
+stays in scope for this paper, is reframed as an exploratory/negative-
+result contribution in its own right (which PREREG.md's own C2 already
+establishes as an acceptable outcome type for a different contribution),
+or is dropped, rather than being chased through a fifth or sixth
+autonomous session without that decision being made explicitly.
+
+- [ ] Scoping decision on C4-ext given four consecutive sessions' results
+      (date: ______)

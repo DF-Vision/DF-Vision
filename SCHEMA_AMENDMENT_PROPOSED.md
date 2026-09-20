@@ -42,7 +42,31 @@ against this session's recommendation -- flag for review, don't assume
 it's an improvement.
 ```
 
-## Not applied because
+## Addendum — 2026-09-20 (explore/geometric-prg-error session)
 
-`SCHEMA.md ` is Person B's file, marked DRAFT pending her review per its
-own header. This proposal is for her (or you) to fold in.
+A second, analogous switch was added this session:
+`relation_classifier/prg_edge_error_config.json`'s `prg_edge_error_mode`
+key (`"classifier"` default, or `"geometric_c1"`/`"geometric_c2"`/`"geometric_c3"`).
+Same proposal shape applies — Section 3b's `prg_edge_error` field
+description should note which mode produced a given value, for the same
+reason as `relation_model_version` above.
+
+```
+prg_edge_error_mode: str
+Which compute_prg_edge_error() implementation produced this edge's
+prg_edge_error: "classifier" (the original confidence + depth-boundary-
+heuristic implementation, default) or one of "geometric_c1"/"geometric_c2"/
+"geometric_c3" (classifier-free candidates from
+explore/scripts/geometric_prg_error.py). Always populated, defaulting to
+"classifier" even on a missing/malformed config file.
+
+IMPORTANT, as of 2026-09-20: all three geometric candidates FAILED their
+pre-committed validity/sensitivity gates (explore/E3_FINDINGS.md) and are
+NOT the production default. Any row with prg_edge_error_mode != "classifier"
+in a real trial log would mean someone manually flipped
+relation_classifier/prg_edge_error_config.json against this session's
+recommendation -- flag for review.
+```
+
+Not applied for the same reason as above — `SCHEMA.md ` is Person B's
+file, pending her review.

@@ -155,3 +155,67 @@ Final integrity check: all 5 `.joblib` SHA256s unchanged;
 `perception-calibration-gap/PREREG.md`, and Person-A's `conformal_gate.py`/
 `gap_computer.py` all empty.
 
+---
+
+# Session 3 — Retrain attempt, branch `retrain/relation-classifier` (2026-09-20, continued)
+
+Full per-task detail in `retrain/*.md` (R0-R9 equivalents: BASELINE,
+GATES, R1_FINDINGS, GATES_RESULTS, R7_VERIFICATION) rather than duplicated
+here. Summary:
+
+- R0-R1: baseline snapshot; cheap bug checks found NO class-order/
+  threshold/intercept bug (decision_function -15 to -48 regardless of
+  true label, confirmed a third time with a dedicated script); label
+  plausibility on real gazebo_contact-derived Support/Contact looked
+  sound; R1c (feature z-score re-check) skipped after 25+ min CPU under
+  heavy, variable external machine contention (`uptime` load avg ~12/12
+  cores from unrelated processes) rather than burn session time on an
+  already-3x-established result.
+- R2: generated 330 labeled pairs (real physics `gazebo_contact` + SDF-
+  geometry-derived Support split, 6 worlds x 6 viewpoints, randomized
+  documented noise per scene, full manifest with SHA256/seeds/generator
+  commit) via the real production `LiveDepthFeatureSource` — train/serve
+  parity by construction. Solves the lost-provenance problem from the
+  prior two sessions for good.
+- R3: trained 6 candidates (2 architectures x 3 algorithms) via leave-
+  one-world-out CV over 5 worlds (world6_dense_mixed held out per a rule
+  fixed in GATES.md before any data existed). Best: two_stage_logreg,
+  0.6668 mean balanced accuracy — below gate, and Contact-class recall
+  was 0.00-0.27 across EVERY candidate, not one bad model.
+- R4: full noise sweep killed twice after 12-27+ min CPU without
+  finishing even one point (machine contention); substituted a reduced,
+  faster 2-world/n=12 check (degradation -0.05, weak evidence, logged
+  honestly as such).
+- R5: held-out world6 test run exactly once — balanced accuracy 0.8212
+  (passes G1 in isolation, contradicting the CV mean), ECE 0.2278 (fails
+  G4), prg_edge_error AUROC 0.5539 (fails G6). This CV-vs-holdout gap is
+  reported as a real finding (scene-to-scene instability), not smoothed
+  over.
+- R6: added `relation_model_version` switch to `classify_relation.py`
+  (new config file `relation_classifier/relation_model_config.json`,
+  default "legacy", integration/prg_config.json never touched);
+  `tests/test_relation_model_v2_regression.py` (7/7 passing, repo's first
+  real pytest suite) confirms legacy output is bit-for-bit unchanged.
+- R2b (DA-V2 secondary features): BLOCKED — `models/depth_anything_v2/dinov2.py`
+  imports a `dinov2_layers` submodule never committed to this repo (exists
+  in two sibling out-of-repo project directories). Logged, not patched in
+  from outside the repo (see `retrain/DA_V2_COMPARISON_SIM.md`).
+- R7: pytest green, all 6 legacy joblib/CSV SHA256s unchanged, config/
+  PREREG/Person-A files untouched, fresh-clone + determinism confirmed.
+- R8: `retrain/REAL_CAPTURE_PROTOCOL.md` + analysis script written,
+  smoke-tested on synthetic dummy data (graceful NaN-skip confirmed, no
+  crash), genuinely untested on real hardware (none available).
+- R9: PROJECT_STATUS.md §9 appended, PREREG_RETRAIN_AMENDMENT_PROPOSED.md
+  and SCHEMA_AMENDMENT_PROPOSED.md drafted (not applied), MORNING_HANDOFF_3.md
+  and draft message to Manasi written.
+
+**Verdict: 5 of 7 pre-committed gates FAIL (G1, G2, G3, G4, G6). v2 not
+recommended for promotion.** `relation_model_version` stays "legacy".
+Full gate table: `retrain/GATES_RESULTS.md`.
+
+Branch: `retrain/relation-classifier`, from `fix/boundary-features` @
+`44a4979`. Final integrity check: all 6 legacy `.joblib`/CSV SHA256s
+unchanged; `git diff` on `integration/prg_config.json`,
+`perception-calibration-gap/PREREG.md`, and Person-A's `conformal_gate.py`/
+`gap_computer.py` all empty.
+

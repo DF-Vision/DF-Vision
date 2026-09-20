@@ -503,3 +503,68 @@ intent, not a misreading of it.
 
 **All outputs SYNTHETIC-stamped**, written to a filename containing
 `SYNTHETIC`, header states "SYNTHETIC - NOT A RESULT", per hard rule 2.
+
+---
+
+## C8 -- End-to-end integration rehearsal, SYNTHETIC (2026-09-21)
+
+### Design (fixed before implementation)
+
+A new sibling script (`perception-calibration-gap/e2e_integration_rehearsal_SYNTHETIC.py`
+-- NOT folded into `daily_integration_check.py` itself, to avoid risking
+that existing, already-green check; added alongside it, run in the test
+suite so it stays exercised) chains, using ONLY code this session
+verified/built (C1-C7), never a new reimplementation of any stage:
+
+1. **Replay frames -> Gap**: reuses C2's `ReplayFrameSource` +
+   `capture_and_gap.run_one_trial()`'s stage sequence (marker pose ->
+   `occlusion_estimator` -> `tsdf_fusion` -> `gap_computer`) against a
+   small SYNTHETIC fixture (reuses `generate_replay_fixture.py`, not a
+   new fixture generator).
+2. **PRG**: the stub path via `integration/prg_client.get_prg_edge_error`
+   (`use_stub` stays `true` in the committed config, per hard rule 3 --
+   never touched) -- `prg_edges` present but `prg_is_stub=True`.
+3. **Calibration transform, synthetic known**: generates synthetic marker
+   point-PAIRS with a KNOWN ground-truth rigid transform (not identity --
+   a nontrivial rotation+translation, so the solver is genuinely
+   exercised, not trivially satisfied), runs
+   `compute_extrinsic_calibration.calibrate()` (the REAL solver, C7's
+   mutation-tested target 1) on them, and asserts the recovered
+   transform matches the known one to near-zero residual.
+4. **Lookup-table dry-run**: the recovered transform feeds
+   `apply_extrinsic()` -> `execute_grasp_lookup_table(..., dry_run=True)`
+   (C7's mutation-tested targets 2/3) on a synthetic lookup table.
+5. **Logger**: a `TrialRecord` per replay trial, via `TrialLogger`.
+6. **`data_quality_report`**: `session_object_confounding_check`,
+   `prg_stub_vs_real_counts`, and `controller_freeze_check` -- run TWICE:
+   once on a single-controller-hash dataset (must pass, `ok=True`), once
+   with a DELIBERATE mid-dataset `controller_git_hash` change and no
+   `NEW_DATASET_TAG` file (must FAIL, `ok=False`) -- proves the freeze
+   check actually fires, not just that it exists.
+7. **Gap-only stats**: `analysis_c1.fit_models` on a larger SYNTHETIC
+   batch (`mock_data_generator.generate_mock_trials`, needed because the
+   E2E replay fixture alone has too few trials to fit a logistic model --
+   stated explicitly in the script's own output, not silently swapped
+   in).
+8. **Conformal gate**: `ConformalGate.fit`/`.empirical_coverage` on a
+   70/30 synthetic split.
+
+### Acceptance criteria
+
+1. Schema-correct rows: every emitted `TrialRecord` has all
+   `REQUIRED_FIELDS` populated (existing `logger.py` validation, not
+   reimplemented).
+2. **PRG columns NaN in Gap-only mode**: when the script's Gap-only
+   stats stage runs on data with prg columns absent/stub-excluded, this
+   is asserted directly (mirrors `test_model_d.py::test_gap_only_runs_without_prg_columns`,
+   reused as a pattern, not duplicated).
+3. `controller_git_hash` is logged on every `TrialRecord`, and the
+   freeze check demonstrably FAILS when it changes mid-dataset without a
+   tag file (not just that the field exists).
+4. Dry-run path logs "NOT SENT" / `sent=False`, and the injected mock
+   `MotorInterface` is asserted called ZERO times (matches
+   `test_grasp_lookup_table.py`'s own existing pattern, reused).
+5. The script exits 0 and is added to the test suite
+   (`tests/test_e2e_integration_rehearsal.py`) so it stays green going
+   forward, per the task's "keep that check green" instruction.
+6. Every artifact/print from this script is SYNTHETIC-stamped.

@@ -154,3 +154,38 @@ criteria fail, STOP" branch already applies from last session's
 decisive C1/C2/C3 failure; nothing in T6a's new bug findings changes
 that verdict, since C1 was already failing decisively before this
 session for a different, also-real reason).
+
+## [T9] Trial harness / schema / session planning — PARTIAL -> closed
+
+Extended `logger.py`'s `TrialRecord` additively (commit `b0223dd`,
+already logged). Built the remaining T9 deliverables, all MISSING per
+STATE.md's inventory (`find . -iname "*scheduler*" -o -iname "*data_quality*"`
+was empty at T0):
+
+- `analysis/model_d.py`: Model D + hard-rule-5 stub-exclusion
+  (`filter_real_prg_rows`, loud logged counts by exclusion reason),
+  guarded off by default (`model_d_config.json: {"enabled": false}`),
+  refuses on zero real rows. `run_gap_only()` proven to work with prg
+  columns entirely absent (`tests/test_model_d.py`, 11/11 passing).
+- `analysis/data_quality_report.py`: per object x condition x repeat
+  counts, success/failure counts, prg stub-vs-real counts,
+  session/object confounding check, controller-freeze check (new
+  concept -- fails if `controller_git_hash` changes mid-dataset without
+  an explicit `<log>.NEW_DATASET_TAG` marker file).
+- `analysis/session_scheduler.py`: Latin-square rotated object order per
+  day, verified every object starts exactly once per full k-day cycle.
+
+Tests (`tests/test_data_quality_and_scheduler.py`, 10/10 passing).
+```
+$ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/test_model_d.py tests/test_data_quality_and_scheduler.py -q
+21 passed
+```
+
+**Known context correction (restated from STATE.md)**: T9's own
+instructions assumed flat scalar `prg_edge_error`/`prg_edge_error_is_stub`
+columns; the real, already-committed schema uses `prg_edges: List[dict]`
++ `prg_is_stub: bool` (richer, supports >1 neighbor/trial). All of this
+session's T8/T9 code (`extract_trial_prg_signal`, `filter_real_prg_rows`)
+is built against the REAL field names, with the per-trial aggregation
+choice (MAX across real edges) documented explicitly in `model_d.py`'s
+own docstring as a modeling decision, not the only defensible one.

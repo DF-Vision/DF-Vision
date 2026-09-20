@@ -118,6 +118,34 @@ class TrialRecord:
     voice_command_text: Optional[str] = None
     grounding_confidence: Optional[float] = None
 
+    # --- EXTENSION: project/overnight-hardening session, T9. Additive
+    # only (all Optional, default None) -- the same discipline as every
+    # extension above: existing REQUIRED_FIELDS validation and every
+    # prior self-test/caller keeps working unmodified. Fields the paper
+    # needs that were not yet on TrialRecord (verified by reading this
+    # class in full before adding anything -- see
+    # project_overnight/STATE.md's T9 row for the file:line evidence of
+    # what was missing).
+    scene_condition: Optional[str] = None       # e.g. "contact"/"support"/"separate"/"near_contact"/occlusion level
+    repeat_id: Optional[int] = None             # which repeat of this (object, condition) cell
+    controller_git_hash: Optional[str] = None   # git commit of the controller code active for this trial
+                                                  # (distinct from policy_checkpoint_hash above, which
+                                                  # identifies the IK/grasp-logic params specifically;
+                                                  # this identifies the controller SOURCE CODE version --
+                                                  # see data_quality_report.py's controller-freeze check)
+    grasp_point_xyz_camera: Optional[List[float]] = None   # [x, y, z], camera frame, meters
+    grasp_point_xyz_robot: Optional[List[float]] = None    # [x, y, z], robot base frame, meters
+    pose_source: Optional[str] = None            # "lookup_table" | "lookup_table_failed" | "ik" (T2)
+    task_success: Optional[int] = None           # 0/1, distinct from `failure` (grasp attempt outcome)
+                                                  # -- task_success can differ from `failure==0` if the
+                                                  # paper ever separates "grasped" from "task completed"
+    notes: Optional[str] = None
+    prg_model_version: Optional[str] = None      # "legacy" | "v2" | "geometric_c1" | ... -- which
+                                                  # classify_relation.py/compute_prg_edge_error.py
+                                                  # config was active when this trial's prg_edges (if
+                                                  # any) were computed. Always populated whenever
+                                                  # prg_edges is non-None; None when prg_edges is None.
+
 
 class TrialLogger:
     def __init__(self, log_path: str, freeze_marker_path: Optional[str] = None):

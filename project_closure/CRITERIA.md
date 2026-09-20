@@ -185,3 +185,97 @@ project-locally without a working project-local install path within the
 3-attempt budget, this is logged as a blocker and the fallback path
 becomes the acceptance path in THIS environment permanently, per rule 10
 ("no network assumptions... continue with the documented fallback").
+
+---
+
+## C4 -- Fix the C1 gap estimator, re-run explore/CRITERIA.md unchanged (2026-09-21)
+
+### Root cause (traced via direct code instrumentation before writing
+these criteria -- not guessed; see project_closure/LOG.md's C4 entry for
+the full instrumented trace)
+
+`_c1_internals()`'s ring is `dilated & ~eroded` -- a band that, by
+construction, straddles the bbox border: roughly HALF its pixels sit
+strictly inside the original mask's own footprint (before erosion
+removes the interior), where `local_gap = |depth - inner_depth| approx 0`
+by definition (same flat surface as the interior sample), and the other
+half sit outside. Confirmed by direct instrumentation on the idealized
+step edge: 40% of all ring pixels have `local_gap == 0` exactly. Taking
+the 10th percentile of a population where the "trivially same-surface"
+side alone contributes far more than 10% of the ring (true for
+essentially any bbox, since the ring is DESIGNED to straddle 50/50) is
+mathematically guaranteed to return approximately 0, independent of the
+true gap value. This is a different, more precise mechanism than the
+xfail-marked test's original docstring guess ("top/bottom ring pixels
+dominate") -- the real cause is the straddling ring DEFINITION itself,
+not which sides happen to touch the image boundary.
+
+### Fix (fixed before implementing, then implemented, not adjusted after
+seeing results)
+
+Change the ring from `dilated & ~eroded` (straddling, ~50% trivially-
+same-surface by construction) to `dilated & ~mask` (EXTERIOR-only: the
+outward band just past the bbox's own boundary, never including any
+pixel that was already inside the original bbox). This removes the
+guaranteed same-surface contamination at its source rather than
+patching the percentile choice. `cv2.erode()` becomes unused and is
+removed. `inner_depth`/`sigma` (computed from the INSET_PX interior
+region, unrelated to the ring) are unchanged.
+
+### Acceptance criteria (fixed before implementation)
+
+1. **Root cause converted to a passing test**: the xfail-marked
+   `test_c1_gap_estimate_on_clean_step_edge_KNOWN_BUG` becomes a normal
+   assertion (`estimated_gap` within a documented tolerance of the true
+   1mm gap on the idealized single-edge scene), test renamed to drop
+   `_KNOWN_BUG`.
+2. **Monotonic response to blur AND noise**, on the same idealized
+   step-edge construction already in `tests/test_geometric_prg_error_sanity.py`
+   (`|rho| > 0.6`, direction unconstrained per that file's own established
+   convention -- physically the direction isn't fixed a priori).
+3. **Two-object touching scene**: target bbox directly adjacent to a
+   second object (small, ~1mm true gap) with FAR background elsewhere in
+   frame (a harder case than the idealized 2-region edge, since
+   background contamination -- the E3-diagnosed, separate mechanism --
+   is present here too). Estimator's `estimated_gap` is closer to the
+   true ~1mm gap than to the far-background distance, i.e. the LOW
+   percentile correctly favors the near/touching side over the inflated
+   background sides.
+4. **Separated scene with a real (non-touching) gap**: target and
+   neighbor at a documented larger true gap (e.g. 5cm), far background
+   elsewhere. `estimated_gap` recovers a value close to the true 5cm gap
+   (not near-zero, not near the background distance).
+5. **Background-only scene** (no neighbor at all, only far background on
+   every side): `estimated_gap` is large (near the background distance),
+   and the final `[0,1]` score reflects "decisively not touching"
+   (`score` near 0, since `p_contact` is near 0 for a large gap) --
+   reported, not hard-gated to an exact number, since the exact score
+   depends on `sigma_gap` too.
+6. **Legacy classifier-mode output unchanged**: this fix touches ONLY
+   `explore/scripts/geometric_prg_error.py` (the classifier-FREE,
+   off-by-default C1/C2/C3 candidates) -- `relation_classifier/scripts/compute_prg_edge_error.py`
+   (the classifier-based, default `prg_edge_error_mode`) is untouched.
+   `tests/test_prg_edge_error_mode_regression.py`'s existing bit-for-bit
+   regression tests must still pass unmodified, proving the default
+   mode's output is bit-for-bit identical to before this fix.
+7. **Re-run `explore/CRITERIA.md` UNCHANGED**: after the fix, re-evaluate
+   C1/C2/C3 against `explore/CRITERIA.md`'s already-pre-committed
+   criteria (a)-(e) (non-constant/range/deterministic, sensitivity
+   rho>0.6 on >=4/5 worlds, validity AUROC>0.70/CI>0.55, beats baselines,
+   collinearity reporting) -- NOT rewritten, NOT loosened, on the SAME 5
+   non-held-out worlds `explore/E3_FINDINGS.md` used.
+   `world6_dense_mixed` (the held-out world) is touched AT MOST ONCE,
+   only if a candidate now passes (a) AND (b) on the 5 non-held-out
+   worlds, exactly matching E3's own selection-then-held-out-touch
+   protocol -- if none passes, held-out stays untouched, same as E3.
+8. **Before/after table reported plainly**, and a direct plain-language
+   statement of whether the earlier negative result (E3_FINDINGS.md)
+   changes -- not assumed either way before running.
+
+If the Gazebo-based world sweep this criterion needs cannot be run
+within the session's remaining budget (headless `gz sim` availability
+confirmed in C0, but a full 5-world x noise/blur sweep is a
+substantially bigger compute/time cost than the idealized-edge tests
+above), this is logged as a blocker with the exact command attempted,
+and criteria 1-6 (which don't require the full world sweep) still stand
+as this task's minimum bar.

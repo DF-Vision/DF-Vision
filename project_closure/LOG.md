@@ -796,3 +796,52 @@ actually demonstrate with feasible real-data N, independent of any PRG
 signal question.
 
 ---
+
+## C8 — End-to-end integration rehearsal (SYNTHETIC)
+
+Criteria pre-committed first (commit `f81554f`).
+
+### What was built
+
+`perception-calibration-gap/e2e_integration_rehearsal_SYNTHETIC.py` — a
+sibling to `daily_integration_check.py` (not folded in, so that
+already-green check stays untouched/not-put-at-risk), chaining 7 stages
+using ONLY this session's already-verified code, no stage reimplemented:
+replay (C2) -> Gap+PRG-stub -> calibration (C7-mutation-tested real
+solver, on a synthetic KNOWN nontrivial rotation+translation, not
+identity) -> lookup-table dry-run (C7-mutation-tested) -> logger -> data
+quality (confounding + stub-count + freeze-check, run TWICE to prove the
+freeze check actually fires) -> Gap-only stats -> conformal gate.
+
+### Run output (abbreviated; reproducible: `python3 perception-calibration-gap/e2e_integration_rehearsal_SYNTHETIC.py`)
+
+```
+Stage 1: 4 good trials, all prg_is_stub=True (stub path, as configured)
+Stage 2: Recovered transform: held-out RMS residual=1.65e-16m (near-zero, as expected)
+Stage 3: [DRY RUN] Would send joint command: {...} -- NOT SENT.
+         Motor interface call count: 0 (must be 0)
+Stage 4: 4 rows schema-correct; controller_git_hash on every row
+Stage 5: Confounding check: confounding_detected=True (1 session, 1 object -- correctly flagged)
+         PRG stub/real counts: n_real_prg_rows=0, n_stub_prg_rows=4
+         Freeze check (single hash): ok=True
+         Freeze check (deliberate mid-dataset change, no tag): ok=False -- FIRES correctly
+Stage 6: Model B fit on 90 SYNTHETIC rows (larger batch, stated explicitly)
+Stage 7: Pooled coverage=0.900, flag_rate=0.100
+E2E INTEGRATION REHEARSAL: PASS (all stages completed, all assertions held)
+```
+
+`tests/test_e2e_integration_rehearsal.py` (2 tests): runs the script as
+a subprocess (matches how a human/CI invokes it), asserts exit 0 + key
+markers present; asserts no stray files leak into the repo root (an
+earlier draft wrote freeze-check log paths under the repo root — fixed
+to use the script's own `tempfile.TemporaryDirectory` before this was
+ever committed, and the "no stray files" test now guards the fix going
+forward).
+
+Full suite after this task: `140 passed, 1 skipped` (was 138+1 skipped
+after C6 — +2 new tests, 0 regressions). `git diff` on protected files:
+empty.
+
+**All 6 criteria met.**
+
+---

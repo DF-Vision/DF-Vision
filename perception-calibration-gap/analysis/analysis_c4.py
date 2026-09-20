@@ -145,10 +145,18 @@ def run_full_c4_package(df: pd.DataFrame, alpha: float = 0.10):
 
     # --- FAIL-Detect baseline: SAME calibration set, split discipline enforced ---
     baseline_features = ["true_occlusion", "clutter_count", "perceived_visibility_initial"]
-    assert set(calib_df.index).isdisjoint(set(test_df.index)) or True, (
-        "index overlap check is a soft sanity note; real discipline enforced by "
-        "three_split() constructing calib/test from disjoint row sets"
-    )
+    # C6 (project/closure session): this used to be `assert ... or True` -- a
+    # vacuous check that could never fail regardless of what it tested. Real
+    # enforcement by trial_id (three_split() resets the DataFrame index, so
+    # positional index overlap is meaningless -- trial_id is the only stable
+    # row identity across the split). See tests/test_split_discipline.py for
+    # the corresponding regression test.
+    if "trial_id" in calib_df.columns and "trial_id" in test_df.columns:
+        assert set(calib_df["trial_id"]).isdisjoint(set(test_df["trial_id"])), (
+            "Split-discipline violation: calib_df and test_df share trial_id(s) -- "
+            "the FAIL-Detect baseline would be trained on rows also used for "
+            "held-out evaluation."
+        )
     baseline = FailDetectBaseline(baseline_features)
     baseline.fit(calib_df)
 

@@ -1,0 +1,82 @@
+SYNTHETIC - NOT A RESULT
+Generated: 2026-09-20T20:27:06.868822+00:00
+RANDOM_STATE base = 20260921
+
+==============================================================================
+(a) Null false-positive rate, n_repeats=1000, N=90
+==============================================================================
+Fit succeeded: 1000/1000 (singular failures: 0)
+False-positive rate (p<0.05 on null data): 44/1000 = 0.0440
+Exact binomial 95% CI: [0.0321, 0.0586]
+Nominal 0.05 within CI: YES -- well-calibrated
+
+==============================================================================
+Gap-variance equality check (null vs planted generator, same seed)
+==============================================================================
+Gap_initial variance -- null: 0.00352630, planted: 0.00352630
+Identical: YES
+
+==============================================================================
+(b) Planted effect recovery, n_repeats=500 per effect size
+==============================================================================
+
+multiplier=0.5 (true b_gap=1.250): n_ok=500/500
+  Sign-correct rate: 0.6140
+  Mean recovered coef: 1.3823  Bias (mean - true): +0.1323
+  95% CI coverage (fraction of CIs containing true coef): 0.9660 (nominal target: 0.95)
+
+multiplier=1.0 (true b_gap=2.500): n_ok=500/500
+  Sign-correct rate: 0.7200
+  Mean recovered coef: 2.7650  Bias (mean - true): +0.2650
+  95% CI coverage (fraction of CIs containing true coef): 0.9560 (nominal target: 0.95)
+
+multiplier=2.0 (true b_gap=5.000): n_ok=500/500
+  Sign-correct rate: 0.8580
+  Mean recovered coef: 5.2941  Bias (mean - true): +0.2941
+  95% CI coverage (fraction of CIs containing true coef): 0.9600 (nominal target: 0.95)
+
+==============================================================================
+(c) Power curve at N=90 (planned), N=120, N=180
+==============================================================================
+
+N~90 (scale_factor=1.000, actual N_total=90, 3 objects, ~30/object):
+  Power (p<0.05, correct sign) at nominal effect: 0.080
+  UNDERPOWERED (<0.8)
+  Stable for per-object conformal calibration (>=20 successful/object, conformal_gate.py's own threshold)? Marginal/NO (~15 successful trials/object at ~50% baseline success rate, illustrative)
+
+N~120 (scale_factor=1.333, actual N_total=120, 3 objects, ~40/object):
+  Power (p<0.05, correct sign) at nominal effect: 0.090
+  UNDERPOWERED (<0.8)
+  Stable for per-object conformal calibration (>=20 successful/object, conformal_gate.py's own threshold)? Plausible (~20 successful trials/object at ~50% baseline success rate, illustrative)
+
+N~180 (scale_factor=2.000, actual N_total=180, 3 objects, ~60/object):
+  Power (p<0.05, correct sign) at nominal effect: 0.107
+  UNDERPOWERED (<0.8)
+  Stable for per-object conformal calibration (>=20 successful/object, conformal_gate.py's own threshold)? Plausible (~30 successful trials/object at ~50% baseline success rate, illustrative)
+
+Minimal detectable effect (multiplier clearing 0.8 power) at N=90, n_reps=300:
+  multiplier=0.25: power=0.030
+  multiplier=0.5: power=0.040
+  multiplier=0.75: power=0.053
+  multiplier=1.0: power=0.057
+  multiplier=1.25: power=0.063
+  multiplier=1.5: power=0.073
+  multiplier=2.0: power=0.150
+  Approximate MDE (smallest multiplier tested clearing 0.8 power): NONE of the tested multipliers reached 0.8 power
+
+Sanity/extent check (not a formal C6(c) requirement, but needed to state the conclusion honestly): how much LARGER would N need to be, at the nominal effect size, to approach 0.8 power? Sweeping scale_factor far beyond the 180 the task asks about:
+  N=360: power=0.210
+  N=720: power=0.350
+  N=1440: power=0.587
+  (If even N=1440 -- 16x the planned N -- does not clear 0.8 power at the nominal effect size, this is strong evidence the study, as currently designed around Model B's specific significance test, cannot reach conventional power at any N remotely achievable by real data collection.)
+
+==============================================================================
+(c, continued) Conformal coverage distribution over 100 repeated splits, N=90
+==============================================================================
+Coverage over 100 splits: mean=0.9074, std=0.0557, min=0.7609, max=1.0000 (target=0.900)
+Fraction of splits within +-5pp of target: 0.560
+(Motivated by the prior session's single-seed 0.955-vs-0.900 finding, flagged but not resolved as noise-vs-systematic -- this IS that resolution: 100 splits show the spread directly rather than one seed's point estimate.)
+
+==============================================================================
+Total wall-clock: 92.9s. SYNTHETIC. NOT A RESULT.
+==============================================================================

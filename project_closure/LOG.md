@@ -659,3 +659,140 @@ z<=0 mutations targeting the exact code paths that positive-path test
 exercises both killed cleanly).
 
 ---
+
+## C6 — Re-establish the synthetic statistics claims properly
+
+Criteria pre-committed first (commit `cbb2da4`).
+
+### A cross-test contamination bug found and fixed while building this
+
+Initial versions of `c6_statistics_SYNTHETIC.py`, `test_split_discipline.py`,
+and `test_c6_statistics.py` copied `t7_synthetic_recovery_check.py`'s
+`sys.modules['shap'] = types.ModuleType('shap')` workaround (needed in
+THAT standalone script because shap being broken used to make
+`analysis_c1.py` entirely unimportable). Running the FULL test suite
+(not just the new files in isolation) surfaced 6 failures in
+`tests/test_rf_shap_check.py` — root cause traced: `sys.modules` is
+global and shared across an entire pytest process; once one of these new
+files ran (alphabetically before `test_rf_shap_check.py`), the fake
+`shap` stub stayed cached, so `analysis_c1`'s `_SHAP_AVAILABLE` guard
+(built in C1, this same session) saw `import shap` succeed against the
+empty stub and set `_SHAP_AVAILABLE=True` — then any real call into
+`shap.TreeExplainer` failed on the stub's missing attributes. **Fixed
+correctly, not worked around again**: removed the stub entirely from all
+three new files — C1's own fix (this session, earlier) already makes
+`analysis_c1.py` import cleanly regardless of shap's state, so the
+workaround (needed only for the OLD, now-superseded failure mode) was
+never actually necessary here. Full suite re-confirmed green after the
+fix (below).
+
+### (a) Null false-positive rate — 1000 datasets, exact binomial CI
+
+```
+Fit succeeded: 1000/1000 (singular failures: 0)
+False-positive rate (p<0.05 on null data): 44/1000 = 0.0440
+Exact binomial 95% CI: [0.0321, 0.0586]
+Nominal 0.05 within CI: YES -- well-calibrated
+```
+Gap-variance equality (regression test for T7's prior-session bug):
+`var_null == var_planted == 0.00352630` exactly, at every seed tested.
+**Well-calibrated at N=90** — the null-generator fix from the prior
+session holds up at 20x the repeat count.
+
+### (b) Planted effect recovery — 500 datasets × 3 effect sizes
+
+| multiplier | true b_gap | sign-correct rate | mean recovered coef | bias | 95% CI coverage |
+|---|---|---|---|---|---|
+| 0.5 | 1.250 | 61.4% | 1.382 | +0.132 | 96.6% |
+| 1.0 (nominal) | 2.500 | 72.0% | 2.765 | +0.265 | 95.6% |
+| 2.0 | 5.000 | 85.8% | 5.294 | +0.294 | 96.0% |
+
+CI coverage is close to nominal (95-97%, well-calibrated) at all three
+effect sizes — the model's confidence intervals are honest. Sign-
+correctness, by contrast, is well BELOW the prior session's 50-repeat
+estimate (">=90%" in `t7_synthetic_recovery_check.py`) — at N=500
+repeats (10x more precise), sign-correctness at the nominal effect is
+only 72.0%, not >=90%. This is not a contradiction: CI coverage and
+sign-correctness measure different things (an unbiased estimator can
+have well-calibrated CIs while still frequently landing on the wrong
+side of zero at small N/high noise) — it IS new information that the
+prior session's small repeat count didn't have the precision to surface.
+
+### (c) Power curve — N=90/120/180, MDE, per-object cells, conformal spread
+
+```
+N=90  (planned): power=0.080  -- UNDERPOWERED
+N=120:           power=0.090  -- UNDERPOWERED
+N=180:           power=0.107  -- UNDERPOWERED
+MDE search (multiplier 0.25..2.0 at N=90): NONE reached 0.8 power
+Extended sanity sweep (not required by C6(c), added to state the
+conclusion honestly):
+  N=360:  power=0.210
+  N=720:  power=0.350
+  N=1440: power=0.587  -- STILL underpowered at 16x the planned N
+```
+**This is the single most important finding of this task, stated
+plainly, not softened**: at the mock generator's own assumed "realistic"
+effect size (`b_gap=2.5`), Model B's specific significance test
+(`p<0.05 AND correct sign`) is severely underpowered at every N tested,
+including N=1440 (16x the planned N) — power only reaches 0.587 there,
+still short of the conventional 0.8 bar. This was verified NOT to be an
+implementation bug: sweeping the effect size at fixed N=90 up to
+`gap_signal_multiplier=16` (an implausibly large, purely diagnostic
+value) DOES drive power to 1.0 (`mult=4→0.50, mult=8→0.91, mult=16→1.0`),
+confirming the power-analysis machinery itself is sound — the
+underpowering is a genuine property of the planned study design at
+realistic effect sizes and N, not a code defect.
+
+Per-object cells at N=90/120/180 are 30/40/60 respectively (3 objects);
+`conformal_gate.py`'s own established >=20-successful-trials threshold
+is only comfortably cleared at N>=120 (at ~50% illustrative baseline
+success rate).
+
+Conformal coverage distribution, 100 repeated splits at N=90:
+```
+mean=0.9074  std=0.0557  min=0.7609  max=1.0000  (target=0.900)
+Fraction of splits within +-5pp of target: 0.560
+```
+**Resolves the prior session's flagged-but-unresolved finding** (a
+single seed's 0.955-vs-0.900 result, "could be noise, not systematic").
+It was noise: the spread across 100 splits is wide (std=5.6pp, range
+[76%, 100%]), and the MEAN (90.7%) is close to the 90% target — a single
+seed anywhere in that range is unremarkable. Only 56% of individual
+splits land within ±5pp, which itself is a useful, honest number: at
+N=90, conformal coverage is noisy split-to-split even though it's
+correct on average.
+
+Full output: `project_closure/scripts/c6_statistics_SYNTHETIC_output.txt`
+(SYNTHETIC-stamped, regenerable: `python3 project_closure/scripts/c6_statistics_SYNTHETIC.py`,
+~93s wall-clock).
+
+### (d) Split-discipline test
+
+Found and fixed a genuinely vacuous existing check in `analysis_c4.py`:
+`assert set(calib_df.index).isdisjoint(set(test_df.index)) or True` — the
+literal `or True` made this assertion incapable of ever failing,
+regardless of what it "checked." Replaced with a real assertion (by
+`trial_id`, since `three_split()` resets the DataFrame index so
+positional-index checks are meaningless) plus a new
+`tests/test_split_discipline.py` (4 tests): `three_split()`'s calib/test
+`trial_id` sets are genuinely disjoint; the new runtime assertion
+actually fires when overlap is injected; an AST-based source check
+confirms `analysis_c4.py`'s `baseline.fit(` call site passes `calib_df`,
+never `test_df`; and `run_full_c4_package` still runs end-to-end on
+ordinary data.
+
+Full suite after this task: `138 passed, 1 skipped` (was 126+1 skipped
+after C7 — +12 new tests, 0 regressions, after fixing the cross-test
+shap-stub contamination this task's own new files briefly introduced).
+`git diff` on protected files: empty.
+
+**All 4 criteria (a)-(d) met.** Ledger item #6 → CLOSED. **New,
+significant finding for the handoff**: C1's planned study, at every N up
+to 16x the plan, is severely underpowered to detect the Gap coefficient
+at statmodels-fit p<0.05 significance under the mock generator's own
+assumed effect size — this changes the honest assessment of what C1 can
+actually demonstrate with feasible real-data N, independent of any PRG
+signal question.
+
+---

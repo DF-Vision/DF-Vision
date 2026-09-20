@@ -1,0 +1,127 @@
+{
+  "model_version": "v2",
+  "architecture": "two_stage",
+  "selected_candidate": "two_stage_logreg",
+  "feature_columns": [
+    "boundary_sharpness",
+    "minimum_boundary_distance",
+    "surface_normal_consistency",
+    "relative_height",
+    "depth_gradient",
+    "overlap_ratio",
+    "edge_continuity",
+    "occlusion_boundary_score"
+  ],
+  "support_feature_columns": [
+    "minimum_boundary_distance",
+    "overlap_ratio",
+    "relative_height"
+  ],
+  "feature_dtype": "float64",
+  "feature_units": "SI (metres) except overlap_ratio/surface_normal_consistency/edge_continuity/occlusion_boundary_score which are dimensionless [0,1]-ish ratios",
+  "train_data_file": "relation_dataset_v2_SIM.csv",
+  "train_data_sha256": "49b0609669dbbae445d5adbade43b2a73cce773fd9a6001d28df4a2155f63e2b",
+  "held_out_test_world": "world6_dense_mixed",
+  "random_state": 20260920,
+  "cv_scheme": "leave-one-world-out GroupKFold",
+  "cv_results": {
+    "majority_class": {
+      "mean": 0.5,
+      "std": 0.0,
+      "folds": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    "best_single_feature_threshold": {
+      "mean": 0.6672269427138013,
+      "std": 0.08691857529483762,
+      "folds": [
+        0.6009523809523809,
+        0.5585106382978724,
+        0.811965811965812,
+        0.6735294117647059,
+        0.6911764705882353
+      ]
+    },
+    "two_stage_logreg": {
+      "mean": 0.6668229191658479,
+      "std": 0.05893000439961296,
+      "folds": [
+        0.5853968253968254,
+        0.675531914893617,
+        0.7378917378917379,
+        0.6147058823529412,
+        0.7205882352941176
+      ]
+    },
+    "two_stage_random_forest": {
+      "mean": 0.6543574780571026,
+      "std": 0.05612646894369004,
+      "folds": [
+        0.6688888888888889,
+        0.561411992263056,
+        0.6267806267806267,
+        0.723529411764706,
+        0.6911764705882353
+      ]
+    },
+    "two_stage_gradient_boosting": {
+      "mean": 0.6048763831542304,
+      "std": 0.1137383683346968,
+      "folds": [
+        0.6612698412698412,
+        0.3960348162475822,
+        0.6994301994301995,
+        0.6941176470588235,
+        0.5735294117647058
+      ]
+    },
+    "direct3class_logreg": {
+      "mean": 0.4937214643234668,
+      "std": 0.04442244548409072,
+      "folds": [
+        0.43873015873015875,
+        0.5512572533849129,
+        0.4487179487179487,
+        0.5323529411764706,
+        0.49754901960784315
+      ]
+    },
+    "direct3class_random_forest": {
+      "mean": 0.6174536418478846,
+      "std": 0.04191709347485832,
+      "folds": [
+        0.660952380952381,
+        0.562862669245648,
+        0.6296296296296297,
+        0.6602941176470588,
+        0.5735294117647058
+      ]
+    },
+    "direct3class_gradient_boosting": {
+      "mean": 0.6307891799018207,
+      "std": 0.09950327236430621,
+      "folds": [
+        0.653015873015873,
+        0.4627659574468085,
+        0.774928774928775,
+        0.6308823529411764,
+        0.6323529411764706
+      ]
+    }
+  },
+  "package_versions": {
+    "python": "3.10.12",
+    "sklearn": "1.7.2",
+    "numpy": "1.26.4",
+    "pandas": "2.3.3"
+  },
+  "generator_commit": "1ac8425d62eb2b86ce8718bcfdebbba62e966482",
+  "produced_by": "retrain/scripts/r3_train_and_select.py",
+  "sim_only": true,
+  "not_citable_as_paper_evidence": true
+}

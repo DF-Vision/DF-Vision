@@ -1,0 +1,40 @@
+R3 training summary -- 5-fold leave-one-world-out CV
+Data: relation_dataset_v2_SIM.csv, 263 rows (world6_dense_mixed excluded)
+RANDOM_STATE=20260920
+
+majority_class: mean=0.5000 std=0.0000 folds=[0.5, 0.5, 0.5, 0.5, 0.5]
+best_single_feature_threshold: mean=0.6672 std=0.0869 folds=[0.601, 0.5585, 0.812, 0.6735, 0.6912]
+two_stage_logreg: mean=0.6668 std=0.0589 folds=[0.5854, 0.6755, 0.7379, 0.6147, 0.7206]
+  recall(Separate) = 0.6889 (n=135)
+  recall(Contact) = 0.0000 (n=37)
+  recall(Support) = 0.7802 (n=91)
+two_stage_random_forest: mean=0.6544 std=0.0561 folds=[0.6689, 0.5614, 0.6268, 0.7235, 0.6912]
+  recall(Separate) = 0.7704 (n=135)
+  recall(Contact) = 0.0270 (n=37)
+  recall(Support) = 0.5934 (n=91)
+two_stage_gradient_boosting: mean=0.6049 std=0.1137 folds=[0.6613, 0.396, 0.6994, 0.6941, 0.5735]
+  recall(Separate) = 0.6593 (n=135)
+  recall(Contact) = 0.1081 (n=37)
+  recall(Support) = 0.5604 (n=91)
+direct3class_logreg: mean=0.4937 std=0.0444 folds=[0.4387, 0.5513, 0.4487, 0.5324, 0.4975]
+  recall(Separate) = 0.3111 (n=135)
+  recall(Contact) = 0.2703 (n=37)
+  recall(Support) = 0.6923 (n=91)
+direct3class_random_forest: mean=0.6175 std=0.0419 folds=[0.661, 0.5629, 0.6296, 0.6603, 0.5735]
+  recall(Separate) = 0.7630 (n=135)
+  recall(Contact) = 0.0541 (n=37)
+  recall(Support) = 0.4725 (n=91)
+direct3class_gradient_boosting: mean=0.6308 std=0.0995 folds=[0.653, 0.4628, 0.7749, 0.6309, 0.6324]
+  recall(Separate) = 0.7333 (n=135)
+  recall(Contact) = 0.0541 (n=37)
+  recall(Support) = 0.5055 (n=91)
+
+SELECTED: two_stage_logreg
+FINAL majority_class: mean=0.5000 std=0.0000
+FINAL best_single_feature_threshold: mean=0.6672 std=0.0869
+FINAL two_stage_logreg: mean=0.6668 std=0.0589
+FINAL two_stage_random_forest: mean=0.6544 std=0.0561
+FINAL two_stage_gradient_boosting: mean=0.6049 std=0.1137
+FINAL direct3class_logreg: mean=0.4937 std=0.0444
+FINAL direct3class_random_forest: mean=0.6175 std=0.0419
+FINAL direct3class_gradient_boosting: mean=0.6308 std=0.0995

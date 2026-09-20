@@ -1,0 +1,110 @@
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+==============================================================================
+R5 FINAL TEST -- world6_dense_mixed, touched exactly once, n=67
+Model architecture: two_stage, selected candidate: two_stage_logreg
+SIM ONLY. Real-hardware behavior is UNVALIDATED by this test.
+==============================================================================
+
+G1: binary touching balanced accuracy = 0.8212 (gate: >0.75)
+Bootstrap 95% CI (row-level, NOT world-grouped -- only 1 held-out world, see docstring): [0.7256, 0.9020] (gate: lower bound >0.60)
+
+G2: per-class recall (n>0.50 each, more than one class predicted)
+  recall(Separate) = 0.9091 (n=22) PASS
+  recall(Contact) = 0.5000 (n=4) FAIL
+  recall(Support) = 0.7073 (n=41) PASS
+  classes predicted: 3 (gate: >1)
+
+Confusion matrix (rows=true, cols=pred), labels=['Separate', 'Contact', 'Support']:
+          Separate  Contact  Support
+Separate        20        1        1
+Contact          0        2        2
+Support         12        0       29
+
+G4: Expected Calibration Error = 0.2278 (gate: <0.10), Brier score = 0.1623
+
+Per-pair errors:
+          world_id  viewpoint       object_a       object_b relation predicted  correct
+world6_dense_mixed          1        obj_jar obj_cereal_box  Contact   Contact     True
+world6_dense_mixed          1 obj_tissue_box      obj_ruler  Support   Support     True
+world6_dense_mixed          1       obj_bowl      obj_apple Separate  Separate     True
+world6_dense_mixed          1       obj_bowl      obj_ruler  Support   Support     True
+world6_dense_mixed          1      obj_apple      obj_ruler Separate   Support    False
+world6_dense_mixed          1   obj_notebook     obj_remote  Support   Support     True
+world6_dense_mixed          1   obj_notebook        obj_pen  Support   Support     True
+world6_dense_mixed          1      obj_plate      obj_spoon  Support   Support     True
+world6_dense_mixed          1      obj_plate       obj_fork  Support  Separate    False
+world6_dense_mixed          1      obj_plate      obj_knife  Support  Separate    False
+world6_dense_mixed          2     obj_bottle obj_cereal_box Separate  Separate     True
+world6_dense_mixed          2 obj_cereal_box      obj_ruler Separate  Separate     True
+world6_dense_mixed          2 obj_tissue_box      obj_ruler  Support   Support     True
+world6_dense_mixed          2       obj_bowl      obj_apple Separate  Separate     True
+world6_dense_mixed          2       obj_bowl      obj_ruler  Support   Support     True
+world6_dense_mixed          2   obj_notebook     obj_remote  Support   Support     True
+world6_dense_mixed          2   obj_notebook        obj_pen  Support   Support     True
+world6_dense_mixed          2      obj_plate      obj_spoon  Support   Support     True
+world6_dense_mixed          2      obj_plate       obj_fork  Support  Separate    False
+world6_dense_mixed          2      obj_plate      obj_knife  Support  Separate    False
+world6_dense_mixed          3        obj_jar obj_cereal_box  Contact   Support    False
+world6_dense_mixed          3 obj_tissue_box      obj_ruler  Support   Support     True
+world6_dense_mixed          3       obj_bowl      obj_apple Separate  Separate     True
+world6_dense_mixed          3       obj_bowl      obj_ruler  Support   Support     True
+world6_dense_mixed          3   obj_notebook     obj_remote  Support   Support     True
+world6_dense_mixed          3   obj_notebook        obj_pen  Support   Support     True
+world6_dense_mixed          3      obj_plate      obj_spoon  Support   Support     True
+world6_dense_mixed          3      obj_plate       obj_fork  Support  Separate    False
+world6_dense_mixed          3      obj_plate      obj_knife  Support  Separate    False
+world6_dense_mixed          4        obj_jar obj_cereal_box  Contact   Support    False
+world6_dense_mixed          4 obj_cereal_box obj_tissue_box Separate  Separate     True
+world6_dense_mixed          4 obj_cereal_box      obj_ruler Separate  Separate     True
+world6_dense_mixed          4 obj_tissue_box       obj_bowl Separate  Separate     True
+world6_dense_mixed          4 obj_tissue_box      obj_ruler  Support   Support     True
+world6_dense_mixed          4       obj_bowl      obj_apple Separate  Separate     True
+world6_dense_mixed          4       obj_bowl      obj_ruler  Support   Support     True
+world6_dense_mixed          4      obj_apple      obj_ruler Separate  Separate     True
+world6_dense_mixed          4   obj_notebook     obj_remote  Support   Support     True
+world6_dense_mixed          4   obj_notebook        obj_pen  Support   Support     True
+world6_dense_mixed          4      obj_plate      obj_spoon  Support   Support     True
+world6_dense_mixed          4      obj_plate       obj_fork  Support  Separate    False
+world6_dense_mixed          4      obj_plate      obj_knife  Support  Separate    False
+world6_dense_mixed          5     obj_bottle        obj_mug Separate  Separate     True
+world6_dense_mixed          5        obj_jar obj_cereal_box  Contact   Contact     True
+world6_dense_mixed          5        obj_jar   obj_notebook Separate  Separate     True
+world6_dense_mixed          5        obj_jar     obj_remote Separate  Separate     True
+world6_dense_mixed          5 obj_cereal_box   obj_notebook Separate  Separate     True
+world6_dense_mixed          5 obj_cereal_box     obj_remote Separate  Separate     True
+world6_dense_mixed          5 obj_tissue_box     obj_banana Separate  Separate     True
+world6_dense_mixed          5 obj_tissue_box      obj_ruler  Support   Support     True
+world6_dense_mixed          5       obj_bowl      obj_apple Separate  Separate     True
+world6_dense_mixed          5       obj_bowl      obj_ruler  Support   Support     True
+world6_dense_mixed          5      obj_apple      obj_ruler Separate  Separate     True
+world6_dense_mixed          5   obj_notebook     obj_remote  Support   Support     True
+world6_dense_mixed          5      obj_plate      obj_spoon  Support   Support     True
+world6_dense_mixed          5      obj_plate       obj_fork  Support  Separate    False
+world6_dense_mixed          5      obj_plate      obj_knife  Support  Separate    False
+world6_dense_mixed          6        obj_mug obj_cereal_box Separate   Contact    False
+world6_dense_mixed          6 obj_tissue_box      obj_ruler  Support   Support     True
+world6_dense_mixed          6       obj_bowl      obj_apple Separate  Separate     True
+world6_dense_mixed          6       obj_bowl      obj_ruler  Support   Support     True
+world6_dense_mixed          6      obj_apple      obj_ruler Separate  Separate     True
+world6_dense_mixed          6   obj_notebook     obj_remote  Support   Support     True
+world6_dense_mixed          6   obj_notebook        obj_pen  Support   Support     True
+world6_dense_mixed          6      obj_plate      obj_spoon  Support   Support     True
+world6_dense_mixed          6      obj_plate       obj_fork  Support  Separate    False
+world6_dense_mixed          6      obj_plate      obj_knife  Support  Separate    False
+
+G6: compute_prg_edge_error() on v2 outputs -- non-constant, in [0,1], AUROC>0.65 for flagging wrong predictions
+[world6_dense_mixed] Found camera 'depth_camera1' -> viewpoint 1, xyz=[-0.11386432 -0.533112    1.71465968]
+[world6_dense_mixed] Found camera 'depth_camera2' -> viewpoint 2, xyz=[ 0.50484747 -0.59058225  1.57275666]
+[world6_dense_mixed] Found camera 'depth_camera3' -> viewpoint 3, xyz=[-0.01749854  0.20893337  1.39873028]
+[world6_dense_mixed] Found camera 'depth_camera4' -> viewpoint 4, xyz=[-0.63984455 -0.49058225  1.57275666]
+[world6_dense_mixed] Found camera 'depth_camera5' -> viewpoint 5, xyz=[-0.11749854 -1.29009787  1.39873028]
+[world6_dense_mixed] Found camera 'depth_camera6' -> viewpoint 6, xyz=[ 0.1402017  -0.40359269  1.6287148 ]
+  n=67, range=[0.0591,0.8519], unique values=67, all in [0,1]: True
+  AUROC(prg_edge_error, wrong_prediction) = 0.5539 (gate: >0.65) FAIL
+
+==============================================================================
+REMINDER: this is a SIMULATION test on ray-cast synthetic depth. It is
+NOT evidence of real-hardware performance, which remains UNVALIDATED.
+See retrain/REAL_CAPTURE_PROTOCOL.md (R8) for the actual sim-to-real test.
+==============================================================================

@@ -186,6 +186,13 @@ def main():
         "camera_pose", "light_level", "seed", "gap_per_step", "timing_per_step",
         "true_visibility_per_step", "tsdf_fusion_attempted",
         "voice_command_text", "grounding_confidence", "prg_error_note",
+        # T9 (project/overnight-hardening session) additions to TrialRecord --
+        # legitimately None in this synthetic wiring-only check, which never
+        # exercises grasp execution (T1/T2), scene/repeat bookkeeping, or a
+        # non-stub PRG model version.
+        "scene_condition", "repeat_id", "controller_git_hash",
+        "grasp_point_xyz_camera", "grasp_point_xyz_robot", "pose_source",
+        "task_success", "notes", "prg_model_version",
     }
     bad_fields = []
     for f in fields(record):

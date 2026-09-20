@@ -426,3 +426,80 @@ whole-repo mutation-testing framework's overhead versus a focused script.
    `parse_marker_sizes`'s cm->m conversion and multi-pair parsing
    correctly BEFORE any mutation is attempted against it (same
    criteria-before-implementation discipline as every other task).
+
+---
+
+## C6 -- Re-establish the synthetic statistics claims properly (2026-09-21)
+
+Builds on existing infrastructure (`project_overnight/scripts/t7_synthetic_recovery_check.py`,
+`perception-calibration-gap/analysis/power_analysis_c1.py`,
+`mock-pipeline/conformal_gate.py`) rather than duplicating it -- those
+files' `n_repeats` (50/100) are far below this task's stated minimums
+(500/1000), so this task EXTENDS them (larger repeat counts, exact
+binomial CIs, variance-equality assertion, split-discipline test, power
+at 3 N's, repeated-split conformal spread) rather than replacing them.
+
+### Acceptance criteria (fixed before implementation)
+
+**(a) Null false-positive rate**: >=1000 simulated null datasets
+(`gap_signal_multiplier=0.0`) at N in [75,90] (mock_data_generator.py's
+`DEFAULT_N_PER_OBJECT` sums to exactly 90 -- within range, used as-is,
+not re-tuned). Reports the rate of `p<0.05` for the Gap coefficient with
+an EXACT binomial 95% CI (`scipy.stats.binomtest`, not a normal
+approximation -- exact per the task's own wording). A test asserts
+Gap's variance is IDENTICAL (not just "close") between the null
+generator (`gap_signal_multiplier=0.0`) and the planted generator
+(`gap_signal_multiplier=1.0`) at the same seed -- this is the exact
+property T7's prior session's bug (documented in
+`project_overnight/LOG.md`) broke and then fixed; this is a permanent
+regression test for that fix, not a new check invented from nothing.
+
+**(b) Planted effect recovery**: >=500 datasets EACH at 3 effect sizes
+(`gap_signal_multiplier` in {0.5, 1.0, 2.0} -- half, nominal, and double
+the generator's default -- chosen to bracket the default without
+guessing an arbitrary set). Reports: sign-correctness rate, coefficient
+BIAS (mean recovered coefficient minus the multiplier-scaled true
+`b_gap`), and 95% CI COVERAGE (fraction of fitted 95% CIs that actually
+contain the true multiplier-scaled `b_gap` -- a coverage check, not just
+a point-estimate bias check, since CI coverage is the property that
+actually matters for the paper's confidence intervals).
+
+**(c) Power curve**: at the "planned" N (90, matching (a)'s N and
+`power_analysis_c1.py`'s own `scale_factor=1.0`), N=120
+(`scale_factor≈1.333`), and N=180 (`scale_factor=2.0`) -- reused via
+`power_analysis_c1.empirical_power()`, not reimplemented. Reports power
+honestly at each N (stated plainly if underpowered, i.e. power <0.8 at
+the nominal effect size) and the approximate minimal detectable effect
+(the smallest `gap_signal_multiplier` clearing 0.8 power at N=90, via a
+coarse search, not a closed-form MDE formula this project has no
+existing implementation of). Per-object cell sizes reported at each N
+(N/3 per object, since the 3-object descope is what this session's mock
+generator already uses) with a plain statement of whether that's enough
+for "stable" per-object conformal calibration (`conformal_gate.py`'s own
+`three_split()` already warns below n=20 successful calibration trials
+-- reused, not a new threshold invented here). Conformal COVERAGE
+DISTRIBUTION over >=100 repeated random splits (different `seed` per
+split) at N=90, reporting the spread (min/max/std, not just one split's
+number) -- directly motivated by the prior session's own flagged,
+unresolved finding (T7's single-seed 0.955-vs-0.900 result, "could be
+noise, not systematic — not resolved").
+
+**(d) Split-discipline test**: a NEW test confirms
+`analysis_c4.py`'s `FailDetectBaseline` is fit ONLY on `calib_df` rows
+(by `trial_id`, since `three_split()` resets the DataFrame index) and
+NEVER on `test_df` rows -- both via a runtime check (`calib_df`/`test_df`
+`trial_id` sets are disjoint, a property of `three_split()` itself) and
+an AST-based source check that `analysis_c4.py`'s own `baseline.fit(`
+call site passes `calib_df`, never `test_df` (mirrors this session's
+existing AST-based `masks_are_bbox_placeholder` check from C2 -- same
+technique, proven to work, reused). NOTE per the module's own documented
+design (`analysis_c4.py`'s own docstring, read before writing this
+criterion): baseline TRAINING and Gap's conformal CALIBRATION
+intentionally use the SAME `calib_df` rows (never `test_df`) -- this is
+by design, not a bug; the "must not overlap" property this test enforces
+is specifically train-vs-TEST-set separation, not calib-vs-calib, and
+this criterion is worded to match the code's actual documented
+intent, not a misreading of it.
+
+**All outputs SYNTHETIC-stamped**, written to a filename containing
+`SYNTHETIC`, header states "SYNTHETIC - NOT A RESULT", per hard rule 2.

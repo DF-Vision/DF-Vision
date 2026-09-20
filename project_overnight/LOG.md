@@ -262,3 +262,27 @@ after T9's `TrialRecord` extension surfaced a real regression (the new
 fields weren't in its `allowed_none` allowlist) -- fixed, re-verified
 PASS. Logged as a genuine catch of T11-style verification value, not
 hidden.
+
+## [T4] Real camera path — verified masks_are_bbox_placeholder, found genuine gaps (not fixed this session)
+
+`capture_and_gap.py:204` confirms `masks_are_bbox_placeholder=True` IS
+set at its one real call site (this was the fix from a prior session,
+"fix(sim,tests): bbox-placeholder flag..." per git log -- re-verified,
+not re-done). `real_camera/orbbec_capture.py` uses the Orbbec SDK
+directly (`Config`/`Pipeline` objects) -- **no config-driven camera
+source selection, no documented expected-topic list, and no `--replay`
+mode exist** (`grep` for `--replay`/`replay`/`argparse` in both files:
+no matches). This is a genuine PARTIAL gap against T4's explicit asks.
+
+**Not built this session** -- given remaining time budget for T10-T13
+(documentation/handoff, which cannot be skipped), and since a `--replay`
+mode is only genuinely useful/testable once real captured frames exist
+(none do yet, per "Known context"), this was judged lower priority than
+finishing the session's required deliverables. Flagged honestly as
+PARTIAL, not silently left off the inventory. Concrete next step for a
+future session: wrap `orbbec_capture.capture_aligned_rgbd()` behind a
+small `CameraSource` abstraction with two implementations
+(`OrbbecCameraSource`, `ReplayCameraSource` reading saved .npy/.png pairs
+per `retrain/REAL_CAPTURE_PROTOCOL.md`'s folder convention), selected by
+a config flag -- mirrors the pattern already used for `relation_model_version`/
+`prg_edge_error_mode` elsewhere in this codebase.

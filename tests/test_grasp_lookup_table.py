@@ -119,6 +119,17 @@ def test_check_joint_limits_flags_violation():
     assert check_joint_limits({"j1": 0.5}, limits) is None
 
 
+def test_check_joint_limits_boundary_values_are_inclusive_not_violations():
+    """C7: mutation testing found this exact boundary was untested (a
+    `<=` -> `<` off-by-one mutation survived). A joint value EXACTLY at
+    its lower or upper limit is within range, not a violation -- the
+    limits themselves are physically reachable positions, not exclusive
+    bounds."""
+    limits = {"j1": [-1.0, 1.0]}
+    assert check_joint_limits({"j1": 1.0}, limits) is None, "value exactly at the upper limit must NOT be flagged"
+    assert check_joint_limits({"j1": -1.0}, limits) is None, "value exactly at the lower limit must NOT be flagged"
+
+
 def test_base_class_motor_interface_raises_not_implemented():
     """Confirms there is genuinely no real hardware backend wired up --
     the base class itself refuses to send anything."""

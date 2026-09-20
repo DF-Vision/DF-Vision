@@ -109,3 +109,79 @@ EXCEPT `timestamp_utc` and `stage_timings_ms`.** This is a scope
 clarification of an internal inconsistency between two criteria written
 in the same commit, not a pass/fail bar being relaxed after a failing
 result -- no criterion's actual pass/fail THRESHOLD changed.
+
+---
+
+## C1 -- Fix the shap environment and the RF+SHAP path (2026-09-21)
+
+### Diagnosis (done before writing these criteria, since a fix can't be
+scoped without knowing the mechanism -- this is diagnosis, not
+implementation)
+
+`import shap` fails at MODULE level in `analysis_c1.py`, meaning the
+ENTIRE module (not just `rf_shap_check()`) is unimportable in this
+environment -- confirmed: `python3 -c "import analysis_c1"` raises the
+same `AttributeError: module 'coverage' has no attribute 'types'`
+traceback as a bare `import shap`/`import numba`. Root cause (C0):
+`numba/misc/coverage_support.py` references `coverage.types.Tracer`
+unconditionally at import time; installed `coverage==6.2` predates that
+submodule. `shap` hard-depends on `numba`. Network is available this
+session (confirmed in C0); a version-pinned local fix is attempted
+first, with the fallback as the acceptance path regardless of whether
+the local fix succeeds, since a fix that only works in a throwaway venv
+doesn't help the DEFAULT interpreter every other test in this repo runs
+under.
+
+### Acceptance criteria (fixed before implementation)
+
+1. **Root cause stated precisely** (done above) with the exact import
+   error text, not just "numba/scipy conflict."
+2. **`analysis_c1.py` is importable regardless of whether `shap` is
+   importable** -- `import shap` is wrapped so a broken shap install
+   degrades the module to fallback mode, not an unimportable file. A
+   test asserts `import analysis_c1` succeeds in THIS environment
+   (where shap is currently broken).
+3. **Fallback, same function signature**: when `shap` is unavailable,
+   `rf_shap_check()` returns the SAME dict shape (`rf_cv_auc_mean`,
+   `rf_cv_auc_std`, `shap_importance_ranked`, `top2_features`) computed
+   from `sklearn.inspection.permutation_importance` PLUS the RF's own
+   tree-native (Gini) `feature_importances_` (averaged, both reported
+   individually too) -- not silently returning a different shape a caller
+   would have to special-case. A loud, explicit warning is printed/logged
+   naming that SHAP is unavailable and which fallback is in use. An
+   added `importance_method` key states `"shap"` or
+   `"permutation+tree_native_fallback"` explicitly -- never silently
+   ambiguous about which path produced a given ranking.
+4. **A test exercises the real SHAP path when importable**, guarded by
+   `@pytest.mark.skipif(not _SHAP_AVAILABLE, reason=<the exact import
+   error text>)` -- never a silent/bare skip with no reason, per the
+   task's explicit requirement.
+5. **Pooled AND per-object**: `rf_shap_check()` (pooled, `object_id`
+   one-hot as already implemented) unchanged in its pooled behavior; a
+   new `rf_shap_check_per_object()` fits/ranks importance separately
+   within each `object_id` subset (no cross-object dummy columns inside
+   a single-object subset -- those would be constant and uninformative)
+   and returns a dict keyed by `object_id`.
+6. **Acceptance on synthetic planted data**: using
+   `mock_data_generator.py`'s planted-effect output (`TRUE_COEFS['b_gap']
+   = 2.5`, an intentionally strong, known signal), the planted Gap
+   feature (`Gap_initial` or `Gap_max`) ranks in the top-2 features by
+   whichever method (`shap` or fallback) is active in this environment --
+   both pooled and for at least one individual object with enough
+   trials to fit.
+7. **SYNTHETIC-stamped output**: any table/plot this task's verification
+   script produces is written under a filename containing `SYNTHETIC`
+   and states "SYNTHETIC - NOT A RESULT" in its own header, per hard
+   rule 2 -- same discipline as every other synthetic artifact in this
+   session.
+8. **Legacy behavior unchanged**: every existing caller of
+   `rf_shap_check()` (there is exactly one, `analysis_c1.py`'s own
+   `if __name__ == "__main__"` block) keeps working with no changes to
+   its call site -- the fallback is an internal behavior change only,
+   not an interface change.
+
+If the local environment fix (coverage/numba upgrade) cannot be applied
+project-locally without a working project-local install path within the
+3-attempt budget, this is logged as a blocker and the fallback path
+becomes the acceptance path in THIS environment permanently, per rule 10
+("no network assumptions... continue with the documented fallback").

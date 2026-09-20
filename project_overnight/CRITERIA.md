@@ -85,12 +85,27 @@ a full scene): a depth image with a single flat step edge of known pixel
 location, known blur (Gaussian sigma in pixels) and known Gaussian noise
 (sigma in meters) — sweep both from 0 to a stress level, assert each
 candidate's raw internal signal (not the final [0,1] score, which C1
-showed can partially cancel out real signal — see T6a itself for why
-both are checked) is monotonically non-decreasing in each of blur and
-noise (Spearman rho > 0.6 on the sweep, same bar as (b) for consistency).
-If this synthetic, isolated, minimal-confound test ALSO fails, that is
-strong evidence the earlier full-scene (b) failure is not merely a
-scene-composition artifact.
+showed can partially cancel out real signal) has a STRONG, CONSISTENT
+monotonic relationship with each of blur and noise: |Spearman rho| > 0.6
+on the sweep (same magnitude bar as (b), direction unconstrained). If
+this synthetic, isolated, minimal-confound test ALSO fails (|rho|<0.6 in
+BOTH directions for a given sweep), that is strong evidence of
+saturation/clamping/a bug rather than a scene-composition artifact.
+
+**CORRECTION, made before running T6a (not after seeing its result)**:
+the first draft of this criterion required "monotonically non-decreasing"
+for BOTH blur and noise on the same raw signal. That's physically
+incoherent for `boundary_sharpness` (C2's raw signal): a sharper step
+edge should mean HIGHER raw gradient, so MORE blur should DECREASE it
+(negative rho), while MORE per-pixel random noise should INCREASE it
+(positive rho, since noise adds spurious local gradients even off the
+true edge) — the two sweeps are expected to have opposite signs on the
+same signal, not the same sign. Corrected to "strong monotonic in either
+direction" before implementing, per the pre-commit discipline's intent
+(catch a bad spec at design time, not after seeing an inconvenient
+result) — this is a specification fix, not a results-driven loosening;
+the bar itself (|rho|>0.6, same magnitude as everywhere else in this
+document) is unchanged.
 
 ## T7 — Synthetic statistics recovery (planted vs. null)
 

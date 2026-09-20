@@ -353,3 +353,66 @@ three separate feature-design attempts in this project's history; and
 `explore/REAL_CAPTURE_PROTOCOL_V2.md`, a ready-to-run protocol for
 measuring real gaps by hand, which is the only way left to test whether
 any of this generalizes beyond simulation.
+
+---
+
+## 11. Overnight hardening session — 2026-09-21 (autonomous, branch `project/overnight-hardening`)
+
+Full detail: `project_overnight/STATE.md`, `project_overnight/CRITERIA.md`,
+`project_overnight/LOG.md`, `project_overnight/MORNING_HANDOFF.md`. This
+session covered the whole system (hardware bring-up software, trial
+harness, statistics, PRG signal) rather than one component, per an
+explicit completeness-policy inventory (EXISTS/PARTIAL/MISSING with
+file:line evidence for every T1-T9 component, `project_overnight/STATE.md`).
+
+**Built fully (were MISSING)**: T1 camera-to-arm extrinsic calibration
+(Kabsch/SVD, held-out validation, degeneracy/units/residual refusal,
+8/8 tests) reusing the existing ArUco/solvePnP code rather than
+duplicating it; T2 grasp lookup-table execution path (no IK solver, no
+motion, dry-run only, 10/10 tests); T8 Model D (guarded off by default,
+hard-rule stub-exclusion with loud logged counts, refuses on zero real
+rows, 11/11 tests); T9's `data_quality_report.py` and
+`session_scheduler.py` (10/10 tests).
+
+**Hardened EXISTING code (found substantial, did not rebuild)**: T3's
+`hand_calc_validation.py` (added a template-refusal guard that was
+genuinely missing — the real `validation_scenes.csv` would have silently
+passed through as if measured, now correctly refused; 11 new tests, AST
+import-independence + 6 analytic-geometry cases); T5's per-object YOLO
+acceptance gate (the aggregate-only-never-sufficient rule, 6 tests) added
+alongside the already-solid `train_yolo_scaffold.py`; T7's Gap-only
+statistics package verified against a synthetic-recovery check that
+found and fixed a real bug in `mock_data_generator.py` (`gap_signal_multiplier=0.0`
+was degenerately zeroing Gap's own variance, not just its effect —
+100/100 singular-matrix failures on null data before the fix, 5/100
+false-positive rate — essentially exact nominal calibration — after);
+T9's `TrialRecord` extended additively with 9 fields the paper needs
+(`grasp_point_xyz_camera/robot`, `pose_source`, `scene_condition`,
+`repeat_id`, `controller_git_hash`, `task_success`, `notes`,
+`prg_model_version`) — this surfaced and required fixing a real
+regression in `daily_integration_check.py`'s field-completeness check.
+
+**T6 (PRG signal, one bounded attempt)**: the synthetic step-edge sanity
+test found the shared depth-noise model's default quantization silently
+masks blur sensitivity at the Contact/Support gap scale (~1mm), and found
+a NEW, more fundamental bug in C1's gap estimator (returns exactly 0.0
+even on an idealized, single-edge, no-background synthetic scene — a
+ring-percentile design flaw distinct from the background-contamination
+mechanism found in the prior session). Documented, not fixed (xfail-
+marked test) — the changed-interface variant (T6b) and full
+re-evaluation (T6c) were explicitly deferred given the session's overall
+scope, not silently dropped. `use_stub` remains `true`; no flip proposed.
+
+**Flagged, not built this session**: T4's real-camera `--replay` mode and
+config-driven source selection (genuinely missing, lower priority than
+finishing the session's required deliverables); `rf_shap_check()`
+(broken `shap` install in this environment, worked around via an
+in-process module stub for everything else, this one function remains
+genuinely UNVERIFIED).
+
+**Untouched, confirmed**: `integration/prg_config.json` (`use_stub: true`),
+every legacy/v2 `.joblib`, `PREREG.md`, `SCHEMA.md `, `INTERFACE.md ` all
+byte-identical to session start (`project_overnight/LOG.md`'s T0 SHA256
+baseline, re-checked in `project_overnight/MORNING_HANDOFF.md`). No arm
+or motor code was executed; every grasp-facing script defaults to
+dry-run and `--i-am-supervising` was never passed.

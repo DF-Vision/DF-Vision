@@ -573,3 +573,89 @@ committing.
 Ledger item #3 → CLOSED.
 
 ---
+
+## C7 — Mutation-test the guards
+
+Criteria (10 targets, method) pre-committed first (commit `9c54e88`).
+
+### What was found before mutating
+
+Target 4 (marker-size config read, `capture_marker_points.py::parse_marker_sizes`)
+had NO test at all — built `tests/test_marker_size_config.py` (4 tests)
+first, committed separately (`64f3a03`), before any mutation was
+attempted against it. Target 5's positive-path requirement
+("template guard accepts a correctly filled, real-looking validation
+CSV") turned out to ALREADY be satisfied
+(`test_passes_once_notes_are_filled_in_for_real` in
+`tests/test_hand_calc_validation.py`, from a prior session) — confirmed
+by reading the file rather than assuming the ledger's carried-forward
+note was still accurate; verified for real via mutation (below) rather
+than re-built.
+
+### Method
+
+`project_closure/scripts/mutation_test_harness.py` (hand-rolled — see
+CRITERIA.md's C7 section for why over mutmut/cosmic-ray) +
+`project_closure/scripts/c7_run_mutations.py` (30 mutations, 3 per
+target). `git status` verified clean before AND after every single
+mutation.
+
+### A real bug in the harness itself, found and fixed mid-task
+
+First full run reported 29/30 killed, with one genuine test-gap finding
+(below) — but a SECOND run (done to double-check before writing this up)
+showed an unrelated test (`test_marker_size_config.py::test_multiple_pairs`)
+failing on what `git status` reported as clean, unmutated code. Root
+cause traced (not guessed): rapid mutate→run→`git checkout`→mutate cycles
+on the SAME file path within one process lifetime can leave a stale
+`.pyc` in `__pycache__` whose recorded source mtime coincidentally
+matches the reverted file's new mtime (sub-second write-revert-write),
+so Python silently loaded MUTATED bytecode for source `git diff` showed
+as clean — a real correctness risk for the harness itself (a "KILLED"
+result under this bug could have been meaningless: the test might be
+failing against stale mutated code from a DIFFERENT mutation, not the
+current one). Fixed: `PYTHONDONTWRITEBYTECODE=1` in every mutation
+test-run subprocess (`mutation_test_harness.py`'s `run_tests()`), plus a
+repo-wide `__pycache__` sweep before each full run. Every mutation was
+RE-RUN from a clean state after this fix — the numbers below are from
+the post-fix run, not the potentially-contaminated first one.
+
+### Result: 30/30 killed (after closing 1 test gap)
+
+Full table: `project_closure/scripts/c7_run_mutations.py`'s run output
+(reproducible — `python3 project_closure/scripts/c7_run_mutations.py`).
+29/30 mutations were killed on the first (post-fix) attempt. One
+survived:
+
+**Survivor**: target 2 (lookup-table), `check_joint_limits`'s
+`if not (lo <= value <= hi):` mutated to `if not (lo <= value < hi):`
+(excludes the exact upper-bound value) — no existing test checked a
+joint value exactly AT its limit. **Closed**: added
+`test_check_joint_limits_boundary_values_are_inclusive_not_violations`
+to `tests/test_grasp_lookup_table.py` (asserts both `lo` and `hi` exactly
+are NOT flagged as violations — a joint's limit is a reachable position,
+not an exclusive bound), committed (`36cc23b`), then the SAME mutation
+re-applied and re-tested: **KILLED**, confirmed directly:
+```
+AssertionError: value exactly at the upper limit must NOT be flagged
+assert 'joint j1=1.0000 outside limits [-1.0, 1.0]' is None
+```
+
+**Kill-rate table**: 1-calibration 3/3, 2-lookup-table 3/3 (after fix),
+3-dry-run-guard 3/3, 4-marker-size 3/3, 5-template-guard 3/3, 6-model-d
+3/3, 7-session-scheduler 3/3, 8-data-quality-report 3/3, 9-controller-freeze
+3/3, 10-depth-unit-guard 3/3. **30/30 = 100% after closing the one test
+gap found** — an honest number: 1 real gap found and fixed, not rounded
+up from a lower first-attempt rate.
+
+Full suite after this task: `126 passed, 1 skipped` (was 121+1 skipped
+after C3 — +4 marker-size tests +1 joint-limit boundary test, 0
+regressions). `git status` clean; `git diff` on protected files: empty.
+
+Ledger item #4 (hand_calc_validation positive-path, listed as item #7 in
+the 8 known open items) confirmed genuinely already closed by a prior
+session, not re-built — verified via mutation (the depth-ordering and
+z<=0 mutations targeting the exact code paths that positive-path test
+exercises both killed cleanly).
+
+---

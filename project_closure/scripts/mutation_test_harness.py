@@ -66,10 +66,18 @@ def revert_mutation(m: Mutation) -> None:
 
 def run_tests(test_file: str) -> subprocess.CompletedProcess:
     test_files = test_file.split()
+    # PYTHONDONTWRITEBYTECODE: repeated rapid mutate/revert/mutate cycles on
+    # the SAME file path can otherwise leave a stale .pyc whose recorded
+    # source mtime happens to match the reverted file's new mtime (fast
+    # write-revert-write within one filesystem timestamp tick) -- causing
+    # Python to load mutated bytecode for what git says is clean, unmutated
+    # source. Confirmed as a real failure mode this session (project_closure/
+    # LOG.md's C7 entry): disable bytecode caching entirely for mutation runs.
     return subprocess.run(
-        [sys.executable, "-m", "pytest", *test_files, "-q"],
+        [sys.executable, "-B", "-m", "pytest", *test_files, "-q"],
         cwd=PROJECT_ROOT, capture_output=True, text=True,
-        env={"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "PATH": "/usr/bin:/bin"},
+        env={"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "PATH": "/usr/bin:/bin",
+             "PYTHONDONTWRITEBYTECODE": "1"},
     )
 
 

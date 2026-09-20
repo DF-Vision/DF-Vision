@@ -104,3 +104,24 @@ accidentally call).
 $ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/test_grasp_lookup_table.py -q
 10 passed in 0.11s
 ```
+
+## [T3] Checkpoint 1 template-refusal fix — PARTIAL -> closed
+
+`hand_calc_validation.py` already existed and did most of T3 (independent
+hand-calc, MAE, scatter plot). Added `refuse_if_still_template()`,
+wired into `main()` right after `write_template_if_missing()`. Verified
+it correctly refuses on the REAL committed `validation_scenes.csv`
+(still template-identical, confirmed via direct run:
+`[REFUSED] validation_scenes.csv row 'apple_baseline_noocc' still
+contains the template's literal "REPLACE with" marker...`).
+`validation_scenes.csv` itself was NOT modified (rule: never fill it in).
+
+Tests (`tests/test_hand_calc_validation.py`, 11/11 passing): AST import-
+independence for both `hand_calc_validation.py` and (transitively)
+`occlusion_estimator.py`; 6 synthetic-geometry cases with analytically
+known visibility (including a hand-worked-out 50%-overlap case, shown in
+the test's own docstring); 3 template-guard cases.
+```
+$ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/test_hand_calc_validation.py -q
+11 passed in 0.08s
+```

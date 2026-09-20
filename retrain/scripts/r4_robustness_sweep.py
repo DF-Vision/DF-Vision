@@ -34,7 +34,13 @@ from validate_live_depth_feature_source import ray_cast_scene
 from noise_model import apply_depth_noise
 
 RANDOM_STATE = 20260920
-NOISE_LEVELS = [0.0, 1.0, 2.0, 3.0, 5.0, 10.0, 15.0]
+NOISE_LEVELS = [0.0, 5.0, 15.0]  # reduced from the full [0,1,2,3,5,10,15] sweep
+# after the first level alone took ~8-13 min of wall time on this heavily
+# CPU-contended machine (see retrain/BASELINE.md) -- these 3 points cover
+# GATES.md's G5 comparison (0 vs 5, "highest realistic level") plus the
+# 15x stress-test endpoint used in prior sessions, without the ~50min the
+# full 7-point sweep would cost for marginal extra resolution given G1/G2
+# already fail decisively regardless (see retrain/models/r3_training_summary.txt).
 GC_DIR = PROJECT_ROOT / "verification" / "gazebo_contacts_SIM"
 OUT_CSV = PROJECT_ROOT / "retrain" / "r4_robustness_sweep_SIM.csv"
 

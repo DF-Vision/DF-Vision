@@ -34,6 +34,11 @@ import pandas as pd
 import joblib
 from sklearn.metrics import balanced_accuracy_score, confusion_matrix, brier_score_loss
 
+sys.path.insert(0, str(PROJECT_ROOT / "relation_classifier" / "scripts"))
+import extract_relation_features as erf
+from validate_live_depth_feature_source import ray_cast_scene
+from compute_prg_edge_error import compute_prg_edge_error
+
 RANDOM_STATE = 20260920
 DATA_CSV = PROJECT_ROOT / "retrain" / "data" / "relation_dataset_v2_SIM.csv"
 HELD_OUT_WORLD = "world6_dense_mixed"
@@ -152,6 +157,46 @@ def main():
     err_df["predicted"] = pred_relation if pred_relation is not None else pred_touch
     err_df["correct"] = err_df["relation"] == err_df["predicted"] if pred_relation is not None else (y_true_touch == pred_touch)
     print(err_df.to_string(index=False))
+
+    print(f"\nG6: compute_prg_edge_error() on v2 outputs -- non-constant, in [0,1], AUROC>0.65 for flagging wrong predictions")
+    objects, cameras = erf.parse_world_sdf(erf.WORLDS_SDF_DIR / f"{HELD_OUT_WORLD}.sdf")
+    edge_errors = []
+    wrong_flags = []
+    for i, row in test_df.iterrows():
+        vp = int(row["viewpoint"])
+        if vp not in cameras:
+            continue
+        camera = cameras[vp]
+        render = ray_cast_scene(camera, objects)
+        mask_a = render.owner == row["object_a"]
+        mask_b = render.owner == row["object_b"]
+        if not np.any(mask_a) or not np.any(mask_b):
+            continue
+        pred_i = pred_relation[i] if pred_relation is not None else ("Separate" if pred_touch[i] == 0 else "Contact")
+        conf_i = float(p_touch[i]) if p_touch is not None else 0.5
+        edge_error = compute_prg_edge_error(
+            rgb=None, depth=render.depth, target_bbox=None,
+            relation=pred_i, confidence=conf_i, mask_a=mask_a, mask_b=mask_b,
+        )
+        edge_errors.append(edge_error)
+        wrong_flags.append(int(pred_i != row["relation"]))
+    edge_errors = np.array(edge_errors)
+    wrong_flags = np.array(wrong_flags)
+    print(f"  n={len(edge_errors)}, range=[{edge_errors.min():.4f},{edge_errors.max():.4f}], "
+          f"unique values={len(set(np.round(edge_errors,6).tolist()))}, "
+          f"all in [0,1]: {bool(np.all((edge_errors>=0)&(edge_errors<=1)))}")
+
+    def _auroc(scores, labels):
+        pos, neg = scores[labels == 1], scores[labels == 0]
+        if len(pos) == 0 or len(neg) == 0:
+            return float("nan")
+        greater = np.sum(pos[:, None] > neg[None, :])
+        ties = np.sum(pos[:, None] == neg[None, :])
+        return float((greater + 0.5 * ties) / (len(pos) * len(neg)))
+
+    g6_auroc = _auroc(edge_errors, wrong_flags)
+    print(f"  AUROC(prg_edge_error, wrong_prediction) = {g6_auroc:.4f} "
+          f"(gate: >0.65) {'PASS' if g6_auroc > 0.65 else 'FAIL'}")
 
     print("\n" + "=" * 78)
     print("REMINDER: this is a SIMULATION test on ray-cast synthetic depth. It is")

@@ -83,3 +83,24 @@ held-out split), mm-vs-m units guard, proper-rotation (det=+1) check.
 
 No motor/arm code touched — this is pure geometry/math, satisfies hard
 rule 1 trivially (no arm-facing code in this task).
+
+## [T2] Grasp lookup-table execution path — MISSING -> built
+
+`perception-calibration-gap/grasp/lookup_table_executor.py` +
+`lookup_table_config_template.yaml`. Nearest-bin lookup with a max
+distance (0.05m default, config), joint-limit checking, `pose_source`
+always populated (`"lookup_table"` / `"lookup_table_failed"`), dry-run
+only unless `--i-am-supervising` (never passed this session). No general
+IK solver written -- lookup-table only, per instructions.
+
+Tests (`tests/test_grasp_lookup_table.py`, 10/10 passing): known point ->
+expected bin/joints; out-of-reach -> IK_FAILURE, confirmed no
+extrapolation; joint-limit violation -> IK_FAILURE, confirmed no silent
+clamping; refuses non-dry-run without the supervising flag; `MotorInterface`
+mock asserted called zero times in dry-run; base `MotorInterface.send_joint_command`
+itself raises `NotImplementedError` (confirms no real backend exists to
+accidentally call).
+```
+$ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/test_grasp_lookup_table.py -q
+10 passed in 0.11s
+```

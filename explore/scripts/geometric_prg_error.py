@@ -116,17 +116,23 @@ def _bbox_to_mask(shape, bbox):
     return mask, (x0, y0, x1, y1)
 
 
-def geometric_c1_gap_uncertainty(rgb, depth, target_bbox) -> float:
+def _c1_internals(depth, target_bbox):
+    """Returns (estimated_gap, sigma_gap, score) or None if the bbox/depth
+    don't support a stable estimate. Split out from geometric_c1_gap_uncertainty
+    purely so evaluation code (explore/scripts/e3_evaluate_candidates.py)
+    can inspect the raw gap estimate for criterion (c) -- the PUBLIC
+    geometric_c1_gap_uncertainty() below returns only the final score, its
+    behavior is unchanged by this refactor."""
     if depth is None:
-        return 0.5
+        return None
     mask, (x0, y0, x1, y1) = _bbox_to_mask(depth.shape, target_bbox)
     if x1 - x0 < 2 * INSET_PX + 1 or y1 - y0 < 2 * INSET_PX + 1:
-        return 0.5  # bbox too small for a stable inset window -- neutral, not a crash
+        return None
 
     inner = depth[y0 + INSET_PX:y1 - INSET_PX, x0 + INSET_PX:x1 - INSET_PX]
     inner = inner[np.isfinite(inner)]
     if inner.size == 0:
-        return 0.5
+        return None
     inner_depth = float(np.median(inner))
     sigma = float(np.std(inner)) if inner.size > 1 else MIN_SIGMA_M
 
@@ -139,7 +145,7 @@ def geometric_c1_gap_uncertainty(rgb, depth, target_bbox) -> float:
     ring_depth = depth[ring]
     ring_depth = ring_depth[np.isfinite(ring_depth)]
     if ring_depth.size == 0:
-        return 0.5
+        return None
 
     local_gap = np.abs(ring_depth - inner_depth)
     estimated_gap = float(np.percentile(local_gap, 10))
@@ -147,7 +153,13 @@ def geometric_c1_gap_uncertainty(rgb, depth, target_bbox) -> float:
 
     z = (CONTACT_THRESHOLD_M - estimated_gap) / sigma_gap
     p_contact = float(norm.cdf(z))
-    return float(2 * min(p_contact, 1 - p_contact))
+    score = float(2 * min(p_contact, 1 - p_contact))
+    return estimated_gap, sigma_gap, score
+
+
+def geometric_c1_gap_uncertainty(rgb, depth, target_bbox) -> float:
+    result = _c1_internals(depth, target_bbox)
+    return 0.5 if result is None else result[2]
 
 
 # Fit once on non-held-out worlds, frozen before evaluating held-out data.
@@ -159,18 +171,26 @@ _C2_LO_DEFAULT = 0.05
 _C2_HI_DEFAULT = 3.0
 
 
-def geometric_c2_boundary_sharpness(rgb, depth, target_bbox, lo: float = _C2_LO_DEFAULT,
-                                     hi: float = _C2_HI_DEFAULT) -> float:
+def _raw_boundary_sharpness(depth, target_bbox):
+    """Raw, unnormalized Sobel-mean at the target's own boundary ring, or
+    None if unavailable. Exposed for evaluation (criterion (d)'s
+    single-feature baseline uses this same raw quantity, min-max scaled)."""
     if depth is None:
-        return 0.5
+        return None
     mask, (x0, y0, x1, y1) = _bbox_to_mask(depth.shape, target_bbox)
     if x1 <= x0 or y1 <= y0:
-        return 0.5
+        return None
     ring = erf._ring_from_mask(mask, ring_px=3)
     if not np.any(ring):
-        return 0.5
+        return None
     bs = erf.feat_boundary_sharpness(depth, ring, ring, mask, mask)
-    if not np.isfinite(bs):
+    return float(bs) if np.isfinite(bs) else None
+
+
+def geometric_c2_boundary_sharpness(rgb, depth, target_bbox, lo: float = _C2_LO_DEFAULT,
+                                     hi: float = _C2_HI_DEFAULT) -> float:
+    bs = _raw_boundary_sharpness(depth, target_bbox)
+    if bs is None:
         return 0.5
     normalized = np.clip((bs - lo) / max(hi - lo, 1e-9), 0.0, 1.0)
     return float(1.0 - normalized)

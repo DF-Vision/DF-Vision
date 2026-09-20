@@ -1,0 +1,10 @@
+# Camera intrinsics for T1 marker-pose capture (calibration/capture_marker_points.py).
+# REPLACE these with your real Orbbec Gemini 2 intrinsic calibration
+# (fx, fy, cx, cy in pixels; dist_coeffs from OpenCV's calibrateCamera or
+# the vendor SDK's own calibration). Copy this file to
+# calibration/camera_intrinsics.yaml and fill in real numbers before use.
+fx: 600.0
+fy: 600.0
+cx: 320.0
+cy: 240.0
+dist_coeffs: [0.0, 0.0, 0.0, 0.0, 0.0]

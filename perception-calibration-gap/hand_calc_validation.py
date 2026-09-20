@@ -159,6 +159,49 @@ def write_template_if_missing(path: str) -> None:
             writer.writerow(row)
 
 
+def refuse_if_still_template(path: str, template_writer=write_template_if_missing) -> None:
+    """T3 fix (project/overnight-hardening session): the existing
+    'no data rows' check below does NOT catch the actual state
+    validation_scenes.csv is in -- the auto-written template has 3
+    NON-EMPTY placeholder rows (see write_template_if_missing above),
+    each with a `notes` field containing the literal marker text
+    "REPLACE with" and camera intrinsics/geometry that are illustrative
+    only. Without this guard, running this script against the untouched
+    template would compute a (meaningless) MAE and could be mistaken for
+    a real Checkpoint 1 pass. Refuses if EITHER condition holds:
+      (a) the file is byte-identical to a freshly-generated template, or
+      (b) any row's notes field contains the literal "REPLACE with".
+    Never modifies validation_scenes.csv itself."""
+    import tempfile
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        template_writer(tmp_path)
+        with open(path, "rb") as f_real, open(tmp_path, "rb") as f_template:
+            if f_real.read() == f_template.read():
+                raise ValueError(
+                    f"{path} is byte-identical to the auto-generated template -- "
+                    f"this is placeholder data, not measured scenes. REFUSING to "
+                    f"treat it as a Checkpoint 1 result. Fill in real measured rows "
+                    f"and re-run."
+                )
+    finally:
+        os.remove(tmp_path)
+
+    with open(path, newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            notes = row.get("notes", "") or ""
+            if "REPLACE with" in notes:
+                raise ValueError(
+                    f"{path} row {row.get('scene_id', '?')!r} still contains the "
+                    f"template's literal \"REPLACE with\" marker text in its notes "
+                    f"field -- this row has not been filled in with real measured "
+                    f"data. REFUSING to treat this file as a Checkpoint 1 result "
+                    f"until every placeholder row is replaced."
+                )
+
+
 @dataclass
 class AABBScene:
     scene_id: str
@@ -337,6 +380,11 @@ def main():
     args = parser.parse_args()
 
     write_template_if_missing(args.scenes)
+    try:
+        refuse_if_still_template(args.scenes)
+    except ValueError as e:
+        print(f"[REFUSED] {e}")
+        sys.exit(1)
     scenes = load_scenes(args.scenes)
     if not scenes:
         print(f"[error] {args.scenes} has no data rows. Fill in real measured scenes and rerun.")

@@ -23,11 +23,31 @@ training/validation run exists yet per this project's stated scope
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
-PRECISION_THRESHOLD = 0.5
-RECALL_THRESHOLD = 0.5
-AP50_THRESHOLD = 0.5
+_CONFIG_PATH = Path(__file__).parent / "per_object_gate_config.json"
+
+
+def _load_thresholds(config_path=None) -> dict:
+    """C3 (project/closure session): thresholds now live in
+    per_object_gate_config.json, not code literals. Defaults (if the file
+    is ever missing) match the values this used to hardcode, so behavior
+    degrades gracefully rather than raising."""
+    path = Path(config_path) if config_path else _CONFIG_PATH
+    defaults = {"precision_threshold": 0.5, "recall_threshold": 0.5, "ap50_threshold": 0.5}
+    if not path.exists():
+        return defaults
+    with open(path) as f:
+        data = json.load(f)
+    return {k: data.get(k, v) for k, v in defaults.items()}
+
+
+_THRESHOLDS = _load_thresholds()
+PRECISION_THRESHOLD = _THRESHOLDS["precision_threshold"]
+RECALL_THRESHOLD = _THRESHOLDS["recall_threshold"]
+AP50_THRESHOLD = _THRESHOLDS["ap50_threshold"]
 
 
 @dataclass

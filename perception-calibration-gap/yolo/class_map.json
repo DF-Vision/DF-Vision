@@ -1,0 +1,4 @@
+{
+  "_comment": "C3 (project/closure session): the SINGLE source of truth for object_name -> class index, used by train_yolo_scaffold.py, auto_label_from_markers.py, and (via tests) checked against data.yaml's names list. Order matters -- index == position.",
+  "classes": ["apple", "tennis_ball", "purse", "glass", "remote"]
+}

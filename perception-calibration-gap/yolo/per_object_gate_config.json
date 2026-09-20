@@ -1,0 +1,6 @@
+{
+  "_comment": "C3 (project/closure session): thresholds moved out of per_object_gate.py's code literals per project_closure/CRITERIA.md's C3(e). Default values identical to the prior hardcoded constants -- existing pass/fail behavior and tests/test_per_object_gate.py's 6 tests are unchanged.",
+  "precision_threshold": 0.5,
+  "recall_threshold": 0.5,
+  "ap50_threshold": 0.5
+}

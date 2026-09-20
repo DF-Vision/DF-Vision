@@ -477,3 +477,99 @@ honest partial result, not a failure to complete the task.** Ledger item
 #4/#11 → CLOSED.
 
 ---
+
+## C3 — YOLO pipeline full verification (software only)
+
+Criteria pre-committed first (commit `c6844cc`).
+
+### What was found before implementing
+
+`train_yolo_scaffold.py` and `per_object_gate.py` both EXIST substantially
+(matching STATE.md's prior assessment), but: no auto-labeling pipeline
+existed anywhere (confirmed via grep — only unrelated mentions);
+`per_object_gate.py`'s thresholds were module-level constants despite its
+own docstring claiming they were "pre-committed in CRITERIA.md" (they
+were pre-committed as NUMBERS in a doc, never actually wired to be
+config-driven — a real gap against this task's (e) requirement); no
+class-index single source of truth (`STUDY_OBJECT_NAMES` was
+train_yolo_scaffold.py's own private list); no grouped train/val split
+(sequential `i < n_train` by image index, no session concept at all).
+
+### What was built
+
+- `class_map.json` + `class_map.py` — single source of truth,
+  `train_yolo_scaffold.py`'s `STUDY_OBJECT_NAMES` now imports it.
+- `auto_label_from_markers.py` — new auto-labeler: detects ArUco markers
+  via the manifest (`gazebo/markers/manifest.csv`), computes a YOLO label
+  using the IDENTICAL dilation formula `capture_and_gap.py`'s
+  `build_bbox_mask_from_corners` already uses (train/serve parity),
+  skips non-study-object markers (occluder/world-origin) rather than
+  mislabeling them.
+- `generate_synthetic_yolo_dataset_grouped()` (new, alongside the
+  existing ungrouped generator, kept unmodified for
+  `run_sanity_finetune`'s fallback path) — session-grouped synthetic
+  dataset, split by session never by image.
+- `detection_metrics.py` — IoU-matching precision/recall/AP50 computation
+  (PASCAL-VOC-style precision envelope), feeding
+  `per_object_gate.evaluate_gate()`'s existing input shape.
+- `per_object_gate_config.json` + `per_object_gate.py`'s `_load_thresholds()`
+  — thresholds moved out of code literals, defaults identical to the old
+  constants.
+
+### Verification
+
+`tests/test_yolo_pipeline.py` (15 tests, fast):
+- Label round trip: apple/purse/glass all recover their known box within
+  1px through the full normalize/decode round trip; non-study markers
+  (occluder_A) correctly skipped; SYNTHETIC contact sheet written.
+- Class map: trainer's `STUDY_OBJECT_NAMES` identical to `class_map.json`;
+  `data.yaml`'s `names:` list matches, read independently.
+- Grouped split: zero session overlap (cross-checked against files
+  actually written on disk, not just the in-memory sets), deterministic
+  under a fixed seed, differs under a different seed.
+- Detection metrics known-answer tests: a perfect-match fixture (hand-
+  computed TP=2/FP=0/FN=0, P=R=AP50=1.0) and a one-miss-one-FP fixture
+  (hand-computed TP=1/FP=1/FN=1, P=R=0.5, AP50=0.5 via the PASCAL
+  precision-envelope trapezoid computed by hand in the test's own
+  docstring) — both reproduced exactly by `detection_metrics.py`.
+- Thresholds: config-driven, defaults match the old hardcoded constants;
+  missing-config fallback also matches.
+
+`tests/test_per_object_gate.py`'s original 6 tests: unchanged, still
+passing (config-driven thresholds default to the same values).
+
+`tests/test_yolo_real_training.py` (4 tests, real ultralytics training,
+~8-146s depending on cache warmth — genuinely run, not mocked):
+```
+Epoch 1: train/box_loss=1.013  train/cls_loss=4.157  train/dfl_loss=1.062
+Epoch 2: train/box_loss=0.752  train/cls_loss=3.925  train/dfl_loss=0.956
+2 epochs completed. Optimizer stripped from .../weights/last.pt, 6.2MB
+Optimizer stripped from .../weights/best.pt, 6.2MB
+```
+All three train-loss components decreased epoch 1 → epoch 2 (a genuine,
+confirmed result — not assumed). Checkpoint reload (`YOLO(last_pt_path)`,
+a FRESH object, not the in-memory one) + `predict()` on a val image both
+ran without raising. `mAP50=0` on val — expected and stated plainly:
+solid-color synthetic boxes at 2 epochs is a CODE CHECK on the training
+loop mechanics, never cited as a detector-quality result, matching
+`train_yolo_scaffold.py`'s own pre-existing framing.
+
+Network confirmed available (C0): `yolov8n.pt` pretrained weights
+download succeeded; the network-restricted fallback path
+(`try_load_pretrained_model`/`try_get_real_coco8`) is unmodified and
+stays exercised for whoever runs this in a restricted environment.
+
+Full suite after this task: `121 passed, 1 skipped` (122 collected; was
+102+1 skipped after C4 — +19 new tests, 0 regressions). `git diff` on
+protected files: empty.
+
+Stray `runs/` training-artifact directories (gitignored via `**/runs/`,
+but cleaned from the working tree regardless) and a manually-generated
+`yolo/data/grouped_sanity_SYNTHETIC/` exploratory directory (superseded
+by the test suite's own `tmp_path`-scoped generation) were removed before
+committing.
+
+**All criteria (a)-(e) met, including the real 2-epoch training run.**
+Ledger item #3 → CLOSED.
+
+---

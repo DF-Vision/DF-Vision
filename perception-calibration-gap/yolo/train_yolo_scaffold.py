@@ -53,12 +53,20 @@ Edge cases handled
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw
 
-STUDY_OBJECT_NAMES = ["apple", "tennis_ball", "purse", "glass", "remote"]
+sys.path.insert(0, str(Path(__file__).parent))
+from class_map import load_class_names
+
+# C3 (project/closure session): STUDY_OBJECT_NAMES used to be defined here
+# directly -- now loaded from class_map.json, the single source of truth
+# shared with auto_label_from_markers.py, so the labeler and the trainer
+# can never silently drift apart on which index means which object.
+STUDY_OBJECT_NAMES = load_class_names()
 
 
 def try_load_pretrained_model():
@@ -139,6 +147,76 @@ def generate_synthetic_yolo_dataset(root: str, n_images: int = 24, seed: int = 0
     print(f"  Generated synthetic offline dataset: {n_train} train / "
           f"{n_images - n_train} val images -> {root}")
     return str(data_yaml)
+
+
+def generate_synthetic_yolo_dataset_grouped(root: str, n_sessions: int = 12,
+                                             images_per_session: int = 4, seed: int = 0,
+                                             val_session_fraction: float = 0.25):
+    """C3 (project/closure session): same synthetic solid-color-box
+    generation as generate_synthetic_yolo_dataset(), but images are grouped
+    into SESSIONS (mirroring a real capture session -- several photos taken
+    in one sitting of one object, at varying position/size), and the
+    train/val split is done BY SESSION, never by individual image -- so no
+    session's images ever appear in both splits. Returns
+    (data_yaml_path, session_of_image: dict[img_stem -> session_id],
+     train_sessions: set, val_sessions: set) so tests can assert zero
+     session overlap and split determinism directly, without re-parsing
+     the written files.
+    """
+    rng = np.random.default_rng(seed)
+    root = Path(root)
+    if root.exists():
+        shutil.rmtree(root)
+    for split in ("train", "val"):
+        (root / "images" / split).mkdir(parents=True, exist_ok=True)
+        (root / "labels" / split).mkdir(parents=True, exist_ok=True)
+
+    img_size = 320
+    colors = [
+        (220, 40, 40), (40, 180, 40), (60, 60, 220), (220, 200, 40), (180, 60, 200)
+    ]
+
+    session_ids = list(range(n_sessions))
+    rng.shuffle(session_ids)  # deterministic under `seed`, but not simply "first N"
+    n_val_sessions = max(1, int(round(n_sessions * val_session_fraction)))
+    val_sessions = set(session_ids[:n_val_sessions])
+    train_sessions = set(session_ids[n_val_sessions:])
+
+    session_of_image = {}
+    for session_id in range(n_sessions):
+        split = "val" if session_id in val_sessions else "train"
+        class_id = session_id % len(STUDY_OBJECT_NAMES)
+        for k in range(images_per_session):
+            img = Image.new("RGB", (img_size, img_size), (30, 30, 30))
+            draw = ImageDraw.Draw(img)
+            box_size = int(rng.integers(40, 100))
+            cx = int(rng.integers(box_size, img_size - box_size))
+            cy = int(rng.integers(box_size, img_size - box_size))
+            x0, y0 = cx - box_size // 2, cy - box_size // 2
+            x1, y1 = cx + box_size // 2, cy + box_size // 2
+            draw.rectangle([x0, y0, x1, y1], fill=colors[class_id])
+
+            stem = f"session{session_id:03d}_img{k:02d}"
+            img.save(root / "images" / split / f"{stem}.jpg", quality=90)
+
+            xc, yc = cx / img_size, cy / img_size
+            w, h = box_size / img_size, box_size / img_size
+            with open(root / "labels" / split / f"{stem}.txt", "w") as f:
+                f.write(f"{class_id} {xc:.6f} {yc:.6f} {w:.6f} {h:.6f}\n")
+            session_of_image[stem] = session_id
+
+    data_yaml = root / "data.yaml"
+    with open(data_yaml, "w") as f:
+        f.write(f"path: {root.resolve()}\n")
+        f.write("train: images/train\n")
+        f.write("val: images/val\n")
+        f.write(f"nc: {len(STUDY_OBJECT_NAMES)}\n")
+        f.write(f"names: {STUDY_OBJECT_NAMES}\n")
+
+    print(f"  Generated grouped synthetic dataset: {len(train_sessions)} train sessions / "
+          f"{len(val_sessions)} val sessions ({n_sessions} total, {images_per_session} "
+          f"images/session) -> {root}")
+    return str(data_yaml), session_of_image, train_sessions, val_sessions
 
 
 def try_get_real_coco8():

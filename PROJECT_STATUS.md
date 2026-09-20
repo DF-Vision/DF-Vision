@@ -167,3 +167,72 @@ statistical result. A three-way object-count conflict across PREREG.md
 model/scaler file, and `perception-calibration-gap/PREREG.md` are
 byte-identical to this branch's starting commit (`2a6f362`) — verified via
 `git diff 2a6f362..HEAD --stat` on those exact paths, empty output.
+
+---
+
+## 8. Verification session — 2026-09-20 (autonomous, branch `fix/boundary-features`), auditing §7 above
+
+A follow-up session was tasked specifically with auditing (not assuming)
+§7's finding, per the standard "every claim traces to logged output, being
+right matters more than finishing." Full detail in `verification/V1_AUDIT.md`,
+`verification/V2_GATE.md`, `verification/RETRAIN_OR_RELABEL_PROPOSAL.md`.
+This section summarizes; those files are the source of truth.
+
+**§7's central claim is downgraded, not confirmed.** The audit found that
+`feat_boundary_sharpness`/`feat_depth_gradient`'s "interface region
+includes background" property, which §7 called "the confirmed root
+cause," is **not a training-vs-live code mismatch at all** — both paths
+call the exact same function with the exact same interface-region logic
+(`ring_a | ring_b`). The ONE confirmed, code-quoted train/live mismatch
+for these two features is much narrower and smaller: the RING KERNEL
+SHAPE (`scripts/export_masks.py`'s training-time boundary exporter uses a
+5x5 ellipse; `LiveDepthFeatureSource`'s `_ring_from_mask()` uses a 3x3
+square), worth roughly a 35-45% effect on `boundary_sharpness`'s
+magnitude — nowhere near enough to explain the 14-40 standard-deviation
+outliers §7 measured. `depth_gradient` has zero confirmed mismatch at all.
+
+**The decisive new evidence**: `relation_classifier/scripts/extract_gazebo_contacts.py`
+— 471 lines, its own docstring explicitly says it had **never been run**
+against a live Gazebo process — was executed for real this session, for
+the first time, successfully, against all 6 staged worlds (after a first
+attempt pointed at the wrong SDF directory and was corrected), producing
+real physics-verified `gazebo_contact` labels for 652 object pairs with
+zero unresolved results. Re-running §7's rehearsal against this REAL
+ground truth, using ONLY the confirmed ring-kernel fix (not §7's
+"true mutual boundary" definition, which was never what the training
+pipeline actually computed — an invented improvement, not a recovered
+one), produced a decisive negative result: **balanced accuracy 0.500,
+predicting "Separate" on all 43/43 tested pairs, identically in both the
+old and "fixed" code paths.** §7's reported "fix restores 60% accuracy"
+result is now understood to have worked only because it used a
+definition training never used, not because it recovered anything real.
+
+**Also corrected**: §7's "MDE-vs-GT hypothesis weakened" is walked back to
+plain INCONCLUSIVE — a previously-unread code comment in
+`extract_relation_features.py` (lines 170-177) states the intended NORMAL
+pipeline mode is `mde_predicted_z`/`False`, with `gazebo_range_gt`/`True`
+described as a one-time validation-only mode — evidence that, if anything,
+cuts the other way from §7's lean. And §7's "no DA-V2 checkpoint exists
+anywhere" is corrected: a checkpoint exists on this machine, just outside
+this repository (`/home/manasi/bps-project/checkpoints/depth_anything_v2_metric_hypersim_vits_NewModified.pth`) —
+`rclpy` is still missing, but a direct (non-ROS) inference path may not
+need it.
+
+**Decision gate result: STOP.** Per the task's pre-committed thresholds
+(balanced accuracy >0.70, CI lower bound >0.55, more than one class
+predicted), which failed outright rather than marginally, no code fix was
+implemented. `verification/RETRAIN_OR_RELABEL_PROPOSAL.md` proposes three
+ordered next steps instead: (A) regenerate training labels from the
+now-demonstrated-working real `gazebo_contact` harness, (B) capture one
+real Gazebo depth-camera render and check whether the background-domination
+property that's confirmed in ray-cast depth also appears there (this
+determines whether `feat_boundary_sharpness`/`feat_depth_gradient` need a
+genuine redesign before any retrain is worth attempting), (C) retrain only
+after A and B, evaluated in `experiments/` first. None of this has been
+executed — it is a proposal awaiting your decision.
+
+**Untouched, re-confirmed**: all 5 `.joblib`/scaler files identical by
+SHA256 to this session's own start; `integration/prg_config.json` and
+`PREREG.md` byte-identical to both `unified-pipeline` and this session's
+branch point (`overnight/prg-diagnosis` @ `0a51fbb`) — see
+`verification/V6_NONREGRESSION.md`.

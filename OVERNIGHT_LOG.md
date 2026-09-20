@@ -130,3 +130,28 @@ git diff 2a6f362..HEAD --stat -- perception-calibration-gap/PREREG.md integratio
 ```
 Empty output — all five confirmed byte-identical to this branch's starting commit. `2a6f362` is the commit this branch was created from (see Setup section above).
 
+---
+
+# Session 2 — Verification pass, branch `fix/boundary-features` (2026-09-20, continued)
+
+A follow-up session audited (not extended) the T1 finding above. Detailed,
+per-task logging for this session lives in `verification/*.md` (V0-V7)
+rather than duplicated here, per that session's own logging instructions.
+Summary: the T1 "confirmed root cause" (interface region includes
+background) was found to be **not a training-vs-live mismatch at all**
+(identical code both paths) — only a small (~35-45%), separately-confirmed
+ring-kernel-shape mismatch exists, and testing it against REAL
+physics-verified `gazebo_contact` (obtained by successfully running
+`extract_gazebo_contacts.py` for the first time ever) showed it changes
+nothing: 0.500 balanced accuracy, 43/43 pairs still predicted "Separate."
+No code fix was implemented (decision gate failed decisively, thresholds
+not softened per instructions). See `verification/V1_AUDIT.md`,
+`verification/V2_GATE.md`, `verification/RETRAIN_OR_RELABEL_PROPOSAL.md`,
+`MORNING_HANDOFF_2.md`, and `PROJECT_STATUS.md` §8 for full detail.
+
+Branch: `fix/boundary-features`, from `overnight/prg-diagnosis` @ `0a51fbb`.
+Final integrity check: all 5 `.joblib` SHA256s unchanged;
+`git diff unified-pipeline..HEAD --stat` on `*.joblib`, `integration/prg_config.json`,
+`perception-calibration-gap/PREREG.md`, and Person-A's `conformal_gate.py`/
+`gap_computer.py` all empty.
+

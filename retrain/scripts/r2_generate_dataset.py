@@ -56,7 +56,10 @@ from noise_model import apply_depth_noise
 
 RANDOM_STATE = 20260920
 NOISE_LEVELS = [0.0, 1.0, 2.0, 3.0, 5.0]  # matches GATES.md's "realistic" range
-VIEWPOINTS = [1, 2, 3]  # of the 6 available per world
+VIEWPOINTS = [1, 2, 3, 4, 5, 6]  # all 6 available per world (extended from
+# an initial 3-viewpoint run, which produced only 155 rows -- generation
+# is cheap (~4 min for 3 viewpoints x 6 worlds), so using all 6 to better
+# hit the "several hundred" target).
 SUPPORT_XY_EPS = 0.02
 SUPPORT_Z_EPS = 0.02
 

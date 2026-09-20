@@ -122,8 +122,26 @@ def generate_mock_trials(n_per_object=None, seed=RNG_SEED, gap_signal_multiplier
             true_visibility = float(np.clip(1.0 - true_occlusion + rng.normal(0, 0.03), 0, 1))
 
             # perceived_visibility is a noisy read of true_visibility; noise
-            # scale depends on the object's detectability (glass/remote noisier)
-            noise_scale = OBJECT_DETECTOR_NOISE[obj] * gap_signal_multiplier
+            # scale depends on the object's detectability (glass/remote noisier).
+            #
+            # BUGFIX (project/overnight-hardening session, found by T7's synthetic
+            # recovery check): this used to be
+            #   noise_scale = OBJECT_DETECTOR_NOISE[obj] * gap_signal_multiplier
+            # which meant gap_signal_multiplier=0.0 (the documented "null" setting,
+            # per this file's own module docstring: "let analysis_c1.py ... be
+            # tested against data where we already know the right answer") also
+            # zeroed the DETECTOR NOISE, making perceived_visibility_initial ==
+            # true_visibility exactly and therefore Gap_initial == 0.0 for every
+            # single row -- a constant column, not "Gap varies but doesn't predict
+            # failure." That degenerate column caused smf.logit(...) to hit a
+            # singular Hessian 100/100 times in a 100-repeat null-data check
+            # (project_overnight/scripts/t7_synthetic_recovery_check.py), which
+            # is a data-generation bug, not evidence about the real analysis code.
+            # Fixed: noise_scale (hence Gap's own variance) is now independent of
+            # gap_signal_multiplier, which continues to scale ONLY Gap's
+            # COEFFICIENT in the failure logit below, matching the documented
+            # intent exactly.
+            noise_scale = OBJECT_DETECTOR_NOISE[obj]
             perceived_visibility_initial = float(np.clip(
                 true_visibility + rng.normal(0, noise_scale), 0, 1
             ))

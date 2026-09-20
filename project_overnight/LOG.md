@@ -189,3 +189,27 @@ session's T8/T9 code (`extract_trial_prg_signal`, `filter_real_prg_rows`)
 is built against the REAL field names, with the per-trial aggregation
 choice (MAX across real edges) documented explicitly in `model_d.py`'s
 own docstring as a modeling decision, not the only defensible one.
+
+## [T5] YOLO per-object acceptance gate — MISSING -> built; scaffold re-verification incomplete
+
+`train_yolo_scaffold.py` already EXISTS substantially (synthetic dataset
+generator, pretrained/COCO8 fallback logic, sanity fine-tune loop) --
+confirmed by reading, not rebuilt. Built the genuinely missing piece:
+`yolo/per_object_gate.py` -- per-object precision/recall/AP50 thresholds
+(pre-committed in `project_overnight/CRITERIA.md`), explicitly rejects a
+result where the AGGREGATE mAP50 passes but any one object's own metrics
+don't (proven by `test_aggregate_passes_but_one_object_fails_gate_still_fails`).
+
+```
+$ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/test_per_object_gate.py -q
+6 passed in 0.01s
+```
+
+Attempted to re-run `train_yolo_scaffold.py` end-to-end as a smoke check
+-- timed out after 90s (this machine showed heavy variable CPU
+contention in a prior session too; not re-diagnosed further here per
+rule 7's attempt budget). **Not claiming a verified end-to-end run this
+session** -- the scaffold's own code was read and is well-documented
+with explicit fallback reporting, but I did not personally re-confirm a
+full pass this session. Flagged honestly rather than asserting success.
+No real detector training was attempted or claimed, per task scope.

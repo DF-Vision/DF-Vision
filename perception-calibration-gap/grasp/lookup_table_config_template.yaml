@@ -1,0 +1,41 @@
+# Grasp lookup-table config (T2). REPLACE with real values filled in by
+# hand AFTER teleop calibration -- do not treat these numbers as usable.
+# One "bin" = a small region of the table (robot base-frame x,y) mapped
+# to a known-good joint-angle vector, found by manually teleoperating the
+# arm to a successful grasp pose over that region and recording the
+# resulting joint angles.
+
+joint_names: [shoulder_pan, shoulder_lift, elbow, wrist_1, wrist_2, gripper]
+
+# Joint limits in radians (except gripper, which is 0-1 normalized open/closed).
+# REPLACE with the real SO-101's documented limits.
+joint_limits:
+  shoulder_pan: [-2.0, 2.0]
+  shoulder_lift: [-1.7, 1.7]
+  elbow: [-1.7, 1.7]
+  wrist_1: [-1.7, 1.7]
+  wrist_2: [-3.0, 3.0]
+  gripper: [0.0, 1.0]
+
+# Max distance (meters, in robot base-frame xy) from a requested grasp
+# point to the nearest bin center before refusing (IK_FAILURE) rather
+# than extrapolating.
+max_bin_distance_m: 0.05
+
+# Bins: each is a base-frame (x, y) center plus its recorded joint
+# angles. z is not binned separately in this simple table (assumes a
+# roughly flat tabletop workspace) -- REPLACE bin_centers/joint_angles
+# with real teleop-calibrated values; these are illustrative placeholders.
+bins:
+  - x: 0.20
+    y: 0.00
+    joint_angles: [0.0, -0.5, 0.8, -0.3, 0.0, 0.0]
+  - x: 0.20
+    y: 0.10
+    joint_angles: [0.3, -0.5, 0.8, -0.3, 0.0, 0.0]
+  - x: 0.20
+    y: -0.10
+    joint_angles: [-0.3, -0.5, 0.8, -0.3, 0.0, 0.0]
+  - x: 0.30
+    y: 0.00
+    joint_angles: [0.0, -0.7, 1.0, -0.3, 0.0, 0.0]

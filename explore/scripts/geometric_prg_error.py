@@ -36,9 +36,13 @@ neighbor mask is available under this interface), then converts the
 gap's own local noise level into an uncertainty band and scores how close
 that band sits to a fixed contact threshold.
 
-  ring = pixels in a THIN_RING_PX-wide band centered on the bbox border
-         (half inside, half outside -- straddling wherever a real contact
-         boundary would actually be).
+  ring = pixels in a THIN_RING_PX-wide band immediately OUTSIDE the bbox
+         border (C4 fix, project/closure session: originally straddled
+         half-inside/half-outside the border, which guaranteed a ~50%
+         same-surface, zero-local-gap contamination and made the 10th
+         percentile return ~0 regardless of the true gap -- see
+         project_closure/CRITERIA.md's C4 section for the traced root
+         cause. Exterior-only removes that contamination at its source).
   inner_depth = median(depth) over the bbox interior, INSET_PX in from
                 every edge (avoids the ring itself contaminating the
                 "clean surface" estimate).
@@ -139,8 +143,22 @@ def _c1_internals(depth, target_bbox):
     import cv2
     kernel = np.ones((THIN_RING_PX, THIN_RING_PX), np.uint8)
     dilated = cv2.dilate(mask.astype(np.uint8), kernel).astype(bool)
-    eroded = cv2.erode(mask.astype(np.uint8), kernel).astype(bool)
-    ring = dilated & ~eroded
+    # C4 fix (project/closure session -- see project_closure/CRITERIA.md's
+    # C4 section for the traced root cause): ring used to be
+    # `dilated & ~eroded`, a band that straddles the bbox border and, by
+    # construction, has roughly HALF its pixels sitting strictly INSIDE the
+    # original mask -- where local_gap = |depth - inner_depth| ~= 0 by
+    # definition, since that's the same flat surface inner_depth was
+    # measured from. Taking a low (10th) percentile over a population where
+    # the trivially-same-surface half is a near-50% chunk is mathematically
+    # guaranteed to return ~0, independent of the true gap -- confirmed by
+    # direct instrumentation (40% of ring pixels had local_gap==0 exactly on
+    # the idealized single-edge test scene). Restricting the ring to
+    # EXTERIOR-only pixels (dilated minus the ORIGINAL mask, never `eroded`)
+    # removes that contamination at its source: every ring pixel is now
+    # outside the bbox, so local_gap only reflects what's actually adjacent,
+    # not the target's own interior repeated back at itself.
+    ring = dilated & ~mask
 
     ring_depth = depth[ring]
     ring_depth = ring_depth[np.isfinite(ring_depth)]

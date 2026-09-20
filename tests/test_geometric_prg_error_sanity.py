@@ -156,48 +156,84 @@ def test_c2_raw_boundary_sharpness_sensitive_to_noise():
     )
 
 
-def test_c1_gap_estimate_on_clean_step_edge_KNOWN_BUG():
-    """NEW BUG FOUND this session (T6a): on a NOISELESS, un-blurred,
-    ISOLATED two-region step edge (no background, no other objects --
-    the cleanest possible case) with a true 1mm gap, C1's estimated_gap
-    comes out as exactly 0.0, not ~0.001.
+def test_c1_gap_estimate_on_clean_step_edge():
+    """FIXED this session (C4, project/closure): on a NOISELESS, un-blurred,
+    ISOLATED two-region step edge (no background, no other objects -- the
+    cleanest possible case) with a true 1mm gap, C1's estimated_gap now
+    correctly recovers ~0.001, not the previously-xfailed 0.0.
 
-    Root cause, diagnosed (not fixed -- see project_overnight/LOG.md T6a
-    entry and project_overnight/CRITERIA.md's T6 recommendation for why
-    not fixed this session, rule 7's 3-attempt budget): _c1_internals'
-    ring (a THIN_RING_PX-wide band around ALL FOUR sides of the target
-    bbox) is dominated by TOP/BOTTOM ring pixels that sit at the image
-    boundary, still fully inside the flat target region (local_gap=0),
-    not the single RIGHT-side ring segment that actually crosses the true
-    step edge. Taking the 10th percentile of local_gap over the WHOLE
-    ring is biased toward these same-region, non-edge pixels whenever
-    they outnumber the true-edge pixels (true for almost any bbox that
-    isn't touching a neighbor along its ENTIRE perimeter) -- a DIFFERENT,
-    more fundamental flaw than the multi-object background-contamination
-    mechanism explore/E3_FINDINGS.md already diagnosed, and one that
-    would apply even in the single-neighbor, no-background idealized case
-    this test constructs.
-
-    Recorded as a KNOWN, xfail-marked bug (not silently skipped, not
-    hidden) rather than fixed in this session."""
+    Root cause (see project_closure/CRITERIA.md's C4 section for the full
+    traced diagnosis): the ring used to be `dilated & ~eroded`, straddling
+    the bbox border with ~50% of its pixels trivially inside the original
+    mask (local_gap~=0 by construction against inner_depth, the SAME
+    surface). The 10th percentile of a population where that same-surface
+    half is a near-50% chunk was mathematically guaranteed to return ~0.
+    Fixed by restricting the ring to EXTERIOR-only pixels
+    (`dilated & ~mask`, never `eroded`) -- see
+    explore/scripts/geometric_prg_error.py's _c1_internals()."""
     depth = make_step_edge_depth(gap_m=0.001, near_depth_m=0.5)
     internals = gpe._c1_internals(depth, TARGET_BBOX)
     assert internals is not None
     estimated_gap, sigma_gap, score = internals
     print(f"\nC1 on clean 1mm step edge: estimated_gap={estimated_gap:.5f}m "
           f"(true=0.001m), score={score:.3f}")
-    if estimated_gap == pytest.approx(0.001, abs=0.0005):
-        pytest.fail(
-            "C1's estimated_gap now matches the true gap -- if this bug has been "
-            "fixed, update this test to assert the correct behavior directly instead "
-            "of xfail-documenting the old bug."
-        )
-    pytest.xfail(
-        f"KNOWN BUG (diagnosed, not fixed this session): C1 estimates gap=0.0 instead "
-        f"of the true 0.001m even on an idealized, isolated, no-background step edge. "
-        f"See this test's own docstring and project_overnight/LOG.md's T6a entry for "
-        f"the diagnosed mechanism (ring dominated by non-edge, same-region pixels)."
+    assert estimated_gap == pytest.approx(0.001, abs=0.0005), (
+        f"C1's estimated_gap ({estimated_gap:.5f}) no longer matches the true 0.001m gap "
+        f"-- if the ring-construction fix (project_closure/CRITERIA.md's C4 section) has "
+        f"regressed, investigate before loosening this assertion."
     )
+
+
+def test_c1_raw_gap_sensitive_to_blur():
+    """C4 (project/closure session): after the ring-construction fix
+    (project_closure/CRITERIA.md's C4 section), does C1's raw
+    estimated_gap respond monotonically to blur? Uses quantize_m=0 for the
+    same reason test_c2_raw_boundary_sharpness_sensitive_to_blur does --
+    isolates blur's own effect from the separate quantization-masking
+    finding above."""
+    levels, c1_gaps, _ = sweep_blur_raw_signals(quantize_m=0.0)
+    assert len(c1_gaps) == len(levels), "C1 returned None for some blur levels"
+    rho, _ = spearmanr(levels, c1_gaps)
+    print(f"\nC1 raw estimated_gap vs blur (quantize_m=0): rho={rho:.3f}, values={c1_gaps}")
+    assert abs(rho) > 0.6, (
+        f"C1's raw estimated_gap is NOT strongly monotonic in blur even after the C4 "
+        f"ring fix (rho={rho:.3f})."
+    )
+
+
+def test_c1_raw_gap_vs_noise_REPORTING_not_gated():
+    """C4 finding (reported, NOT hard-gated, per this file's own established
+    convention -- see test_quantization_masks_blur_signal_on_small_gaps
+    above for the same discipline): C1's raw estimated_gap vs noise level,
+    using the standard [0, 1, 2, 3, 5] sweep, does NOT clear the |rho|>0.6
+    bar that CRITERIA.md's C4 section pre-committed to (measured: rho~=0.0
+    over 30-seed-averaged means per level; single-seed-per-level as used
+    elsewhere in this file gives the same qualitative result).
+
+    Root cause (diagnosed, not a bug in the C4 fix itself): the ring is now
+    exterior-only, so estimated_gap = 10th percentile of
+    |noisy_neighbor_depth - inner_depth| over ~480 pixels. At level=0 (no
+    noise), this exactly recovers the true 1mm gap. The MOMENT any noise is
+    added (level=1, sigma0=1mm -- comparable in magnitude to the 1mm true
+    gap itself), the 10th percentile of the resulting |offset + N(0,sigma)|
+    population is biased sharply DOWNWARD (some fraction of the ~480
+    samples land close to zero purely by chance when noise partially
+    cancels the small true offset) -- then, as noise grows further
+    (level 2/3/5), the 10th percentile trends back upward (confirmed:
+    30-seed-averaged means are 0.00021 / 0.00031 / 0.00041 / 0.00065 for
+    levels 1/2/3/5 -- CLEANLY monotonic increasing among themselves), but
+    never recovers to level=0's exact value within this sweep's range. The
+    overall level-0-through-5 relationship is therefore genuinely
+    NON-monotonic (a fold/order-statistic boundary effect at the
+    zero-noise reference point, not a coding defect), distinct from the
+    zero-return bug this session's C4 fix resolved. Left as a reported,
+    diagnosed limitation rather than silently hidden or criteria-loosened
+    -- see project_closure/LOG.md's C4 entry."""
+    levels, c1_gaps, _ = sweep_noise_raw_signals()
+    assert len(c1_gaps) == len(levels)
+    rho, _ = spearmanr(levels, c1_gaps)
+    print(f"\nC1 raw estimated_gap vs noise: rho={rho:.3f}, values={c1_gaps} "
+          f"(NOT gated -- see this test's docstring)")
 
 
 def test_c1_score_responds_to_blur_and_noise_even_if_direction_is_mixed():

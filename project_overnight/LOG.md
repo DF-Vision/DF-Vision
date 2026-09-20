@@ -125,3 +125,32 @@ the test's own docstring); 3 template-guard cases.
 $ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/test_hand_calc_validation.py -q
 11 passed in 0.08s
 ```
+
+## [T6] PRG signal: bounded attempt — T6a done, T6b/T6c deferred (logged, not silently dropped)
+
+T6a (sanity test): see commit `b788786`. Found real signal in C2 (once
+isolated from a quantization-masking artifact in the shared noise
+model), and a genuine, precisely diagnosed NEW bug in C1's core
+estimator (returns 0.0 gap on an idealized single-edge, no-background
+scene) — a more fundamental issue than the multi-object background-
+contamination mechanism `explore/E3_FINDINGS.md` already found. Per rule
+7 (max ~3 attempts then log and continue), this bug is recorded
+(xfail-marked test, not fixed) rather than patched — fixing it properly
+would mean redesigning the ring/percentile logic and re-running the full
+pre-committed `explore/CRITERIA.md` (a)-(f) suite again, which this
+session's remaining time budget does not support alongside T7-T13.
+
+**T6b (changed-interface neighbor-localization variant) and T6c
+(re-evaluation against explore/CRITERIA.md) are explicitly DEFERRED, not
+attempted this session.** Building a from-depth-only neighbor
+localization (connected components / depth discontinuities) is a
+nontrivial new implementation, and re-running the full (a)-(f) gate
+suite on it would itself be a multi-hour task given last session's own
+timing notes. Given this session's primary new deliverables (T1, T2) and
+the remaining T7-T13 scope, this was judged lower priority than breadth
+across the rest of the task list. **`use_stub` in `integration/prg_config.json`
+remains `true`** — no proposal to flip it is being made (T6d's "if
+criteria fail, STOP" branch already applies from last session's
+decisive C1/C2/C3 failure; nothing in T6a's new bug findings changes
+that verdict, since C1 was already failing decisively before this
+session for a different, also-real reason).

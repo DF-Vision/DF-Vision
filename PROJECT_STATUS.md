@@ -236,3 +236,60 @@ SHA256 to this session's own start; `integration/prg_config.json` and
 `PREREG.md` byte-identical to both `unified-pipeline` and this session's
 branch point (`overnight/prg-diagnosis` @ `0a51fbb`) — see
 `verification/V6_NONREGRESSION.md`.
+
+---
+
+## 9. Retrain session — 2026-09-20 (autonomous, branch `retrain/relation-classifier`)
+
+Full detail in `retrain/GATES_RESULTS.md`, `retrain/models/r3_training_summary.txt`,
+`MORNING_HANDOFF_3.md`. This section summarizes.
+
+Given §8's conclusion (no confirmed, sufficient code-level fix for the
+binary model's degeneracy), this session attempted an actual, disciplined
+retrain: pre-committed, un-softened acceptance gates written BEFORE any
+training run (`retrain/GATES.md`); 330 newly-generated, fully-provenanced
+labeled pairs using REAL physics-verified `gazebo_contact` (not the
+heuristic label) plus SDF-geometry-derived Support/Contact splitting, 6
+worlds x 6 camera viewpoints, randomized documented depth noise per scene
+(`retrain/data/relation_dataset_v2_SIM.csv` + `MANIFEST.md`, solving the
+lost-training-data-provenance problem for good); strict train/serve
+parity (every feature comes from the same, real `LiveDepthFeatureSource.compute()`
+production code, no separate training-time feature path); and
+leave-one-world-out CV with a fully held-out final test world
+(`world6_dense_mixed`), never touched during model selection.
+
+**Result: the pre-committed gates fail, decisively, not marginally.**
+Best of 6 candidate models tried (2 architectures x 3 algorithms):
+0.6668 mean CV balanced accuracy (gate: >0.75) — and, more importantly,
+**every one of the 6 candidates showed near-zero recall (0.00-0.27) on
+the "Contact" class specifically**, while Separate and Support were both
+learnable to a reasonable degree. This is not one bad model or one bad
+run; it is consistent across architecture and algorithm, and it persists
+with clean labels and correct, parity-enforced features — pointing at a
+structural limitation of the current 8-feature set for distinguishing
+side-by-side Contact from stacked Support or non-touching, at least on
+the depth this session could generate.
+
+**Decision: `relation_model_version` (a new, additive config key in a new
+file, `relation_classifier/relation_model_config.json` — `integration/prg_config.json`
+was never touched) stays at its committed default, `"legacy"`.** No
+promotion is recommended. Per this project's own stated discipline, this
+is reported as a failure report and a proposal, not softened or spun as
+a partial success.
+
+**What this session did produce of lasting value, independent of the
+negative training result**: (a) the dataset-provenance fix described
+above; (b) a working, tested `relation_model_version` switch
+(`classify_relation()`'s public return contract is unchanged and
+regression-tested, `tests/test_relation_model_v2_regression.py`, 7/7
+passing — the repo's first real pytest suite); (c) confirmation, for the
+first time with real evidence rather than inference, that the ceiling on
+this feature set is real; (d) `retrain/REAL_CAPTURE_PROTOCOL.md`, a
+ready-to-run protocol for the actual sim-to-real test, which only Manasi
+can execute (needs the physical camera).
+
+**Untouched, re-confirmed**: all 6 legacy `.joblib`/scaler/CSV files
+identical by SHA256 to this session's start (`retrain/BASELINE.md` vs
+`retrain/R7_VERIFICATION.md`); `integration/prg_config.json`, `PREREG.md`,
+and Person-A's `conformal_gate.py`/`gap_computer.py` all confirmed
+untouched via `git diff`.

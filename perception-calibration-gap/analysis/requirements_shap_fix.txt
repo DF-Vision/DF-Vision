@@ -1,0 +1,34 @@
+# C1 (project/closure session): project-local fix for the broken `shap`
+# import in this repo's DEFAULT interpreter (system python3, user
+# site-packages). Root cause: numba/misc/coverage_support.py references
+# coverage.types.Tracer unconditionally at import time; the installed
+# coverage==6.2 (default env) predates that submodule -- see
+# project_closure/CRITERIA.md's C1 diagnosis and LOG.md's C1 entry for the
+# exact traceback.
+#
+# This is NOT applied to the default interpreter (that would silently
+# change every other test/session's environment without review). Instead,
+# create an isolated virtualenv and install this pin set into it:
+#
+#   python3 -m venv .venv-shap
+#   source .venv-shap/bin/activate
+#   pip install -r perception-calibration-gap/analysis/requirements_shap_fix.txt
+#
+# Verified this session (project_closure/LOG.md's C1 entry): with these
+# versions, `import shap` succeeds and analysis_c1.py's real-SHAP path
+# (not the permutation+tree-native fallback) runs correctly, including
+# tests/test_rf_shap_check.py's skipif-guarded real-SHAP test.
+#
+# analysis_c1.py itself does NOT require this venv to run -- it degrades
+# to the fallback automatically (see its _SHAP_AVAILABLE guard) when shap
+# is unavailable, so the default interpreter keeps working either way.
+
+coverage==7.16.1
+numba==0.67.0
+shap==0.49.1
+numpy==2.2.6
+scipy==1.15.3
+scikit-learn==1.7.2
+pandas
+statsmodels
+pytest

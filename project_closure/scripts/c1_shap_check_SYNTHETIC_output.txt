@@ -1,0 +1,29 @@
+SYNTHETIC - NOT A RESULT
+Generated: 2026-09-20T19:50:57.686827+00:00
+shap available in this environment: False
+  (import error: AttributeError: module 'coverage' has no attribute 'types')
+Ground truth TRUE_COEFS (mock_data_generator.py): {'b0': -2.2, 'b_occ': 2.0, 'b_gap': 2.5, 'b_session': 0.8}
+
+[WARNING] shap unavailable (AttributeError: module 'coverage' has no attribute 'types') -- rf_shap_check() using the permutation_importance + tree-native-importance fallback instead. See project_closure/CRITERIA.md's C1 section.
+
+=== POOLED (importance_method=permutation+tree_native_fallback) ===
+rf_cv_auc_mean=0.625 rf_cv_auc_std=0.005
+top2_features=['true_occlusion', 'Gap_initial']
+true_occlusion    1.000000
+Gap_initial       0.553432
+Gap_max           0.485535
+clutter_count     0.245114
+obj_purse         0.090158
+obj_glass         0.082586
+obj_apple         0.000000
+dtype: float64
+Gap in top-2 (pooled): PASS
+
+=== PER-OBJECT (importance_method varies per object) ===
+  apple: method=permutation+tree_native_fallback top2=['true_occlusion', 'Gap_initial'] Gap_in_top2=PASS
+  glass: method=permutation+tree_native_fallback top2=['true_occlusion', 'Gap_max'] Gap_in_top2=PASS
+  purse: method=permutation+tree_native_fallback top2=['Gap_initial', 'true_occlusion'] Gap_in_top2=PASS
+
+Per-object: 3/3 objects show Gap in top-2 (evaluable objects only, insufficient-data objects excluded from this ratio)
+
+=== OVERALL: PASS (pooled top-2 AND at least one evaluable object's top-2) ===

@@ -43,6 +43,8 @@ Edge cases handled:
       not silently skipped without a trace.
 """
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -50,8 +52,26 @@ import statsmodels.formula.api as smf
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.inspection import permutation_importance
 from sklearn.metrics import roc_auc_score
-import shap
+
+# C1 (project/closure session): `import shap` used to be unconditional here,
+# which meant this WHOLE MODULE failed to import whenever shap's own import
+# chain was broken (confirmed root cause: numba/misc/coverage_support.py
+# references coverage.types.Tracer unconditionally, and the installed
+# coverage==6.2 predates that submodule -- see project_closure/LOG.md's C1
+# entry and CRITERIA.md's C1 diagnosis). Guarded so analysis_c1.py degrades
+# to a permutation-importance + tree-native-importance fallback instead of
+# refusing to import at all -- rf_shap_check() below reports plainly which
+# path produced a given ranking (importance_method key), never silently.
+try:
+    import shap
+    _SHAP_AVAILABLE = True
+    _SHAP_IMPORT_ERROR = None
+except Exception as _e:  # pragma: no cover -- exercised by whichever branch this env takes
+    shap = None
+    _SHAP_AVAILABLE = False
+    _SHAP_IMPORT_ERROR = f"{type(_e).__name__}: {_e}"
 
 
 N_BOOTSTRAP = 1000
@@ -105,20 +125,8 @@ def bootstrap_auc_delta(df: pd.DataFrame, formula_a: str, formula_b: str,
     return float(np.mean(deltas)), float(ci_low), float(ci_high), len(deltas)
 
 
-def rf_shap_check(df: pd.DataFrame, feature_cols=None):
-    """Random Forest + SHAP cross-check: does Gap rank in the top-2 features?
-    object_id is one-hot encoded as a categorical feature, per PREREG.md."""
-    feature_cols = feature_cols or ["true_occlusion", "Gap_initial", "Gap_max", "clutter_count"]
-    X = df[feature_cols].copy()
-    X = pd.concat([X, pd.get_dummies(df["object_id"], prefix="obj")], axis=1)
-    y = df["failure"]
-
-    rf = RandomForestClassifier(max_depth=4, n_estimators=300, random_state=RNG_SEED)
-    rf.fit(X, y)
-
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RNG_SEED)
-    cv_auc = cross_val_score(rf, X, y, cv=cv, scoring="roc_auc")
-
+def _shap_importance(rf, X) -> pd.Series:
+    """Real SHAP path. Only called when _SHAP_AVAILABLE."""
     explainer = shap.TreeExplainer(rf)
     shap_values = explainer.shap_values(X)
     # SHAP's output shape varies by version/estimator:
@@ -133,14 +141,101 @@ def rf_shap_check(df: pd.DataFrame, feature_cols=None):
     else:
         sv = shap_values
     mean_abs_shap = np.abs(sv).mean(axis=0)
-    importance = pd.Series(mean_abs_shap, index=X.columns).sort_values(ascending=False)
+    return pd.Series(mean_abs_shap, index=X.columns).sort_values(ascending=False)
+
+
+def _fallback_importance(rf, X, y) -> pd.Series:
+    """C1 fallback: permutation importance (model-agnostic, uses held-in
+    predictions -- the closest model-agnostic analogue to SHAP's marginal
+    contribution) averaged with the RF's own tree-native (Gini/MDI)
+    feature_importances_, after independently min-max normalizing each to
+    [0,1] so neither scale dominates the average. Used ONLY when
+    _SHAP_AVAILABLE is False -- see rf_shap_check()'s importance_method key."""
+    perm = permutation_importance(rf, X, y, n_repeats=20, random_state=RNG_SEED, scoring="roc_auc")
+    perm_imp = pd.Series(perm.importances_mean, index=X.columns).clip(lower=0)
+    tree_imp = pd.Series(rf.feature_importances_, index=X.columns)
+
+    def _minmax(s):
+        rng = s.max() - s.min()
+        return (s - s.min()) / rng if rng > 0 else s * 0.0
+
+    combined = (_minmax(perm_imp) + _minmax(tree_imp)) / 2.0
+    return combined.sort_values(ascending=False)
+
+
+def _rf_importance_for_subset(X: pd.DataFrame, y: pd.Series, min_class_count: int = 5):
+    """Shared core: fit RF, 5-fold CV AUC (or None if too few samples/classes
+    to CV), and importance ranking via SHAP or the fallback. Returns the
+    result dict shape used by both rf_shap_check() and
+    rf_shap_check_per_object()."""
+    rf = RandomForestClassifier(max_depth=4, n_estimators=300, random_state=RNG_SEED)
+    rf.fit(X, y)
+
+    cv_auc_mean, cv_auc_std = None, None
+    class_counts = y.value_counts()
+    if len(class_counts) >= 2 and class_counts.min() >= min_class_count:
+        n_splits = min(5, int(class_counts.min()))
+        cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=RNG_SEED)
+        cv_auc = cross_val_score(rf, X, y, cv=cv, scoring="roc_auc")
+        cv_auc_mean, cv_auc_std = float(cv_auc.mean()), float(cv_auc.std())
+
+    if _SHAP_AVAILABLE:
+        importance = _shap_importance(rf, X)
+        method = "shap"
+    else:
+        warnings.warn(
+            f"shap unavailable ({_SHAP_IMPORT_ERROR}) -- rf_shap_check() using the "
+            f"permutation_importance + tree-native-importance fallback instead. "
+            f"See project_closure/CRITERIA.md's C1 section.",
+            RuntimeWarning,
+        )
+        importance = _fallback_importance(rf, X, y)
+        method = "permutation+tree_native_fallback"
 
     return {
-        "rf_cv_auc_mean": float(cv_auc.mean()),
-        "rf_cv_auc_std": float(cv_auc.std()),
+        "rf_cv_auc_mean": cv_auc_mean,
+        "rf_cv_auc_std": cv_auc_std,
         "shap_importance_ranked": importance,
         "top2_features": list(importance.index[:2]),
+        "importance_method": method,
     }
+
+
+def rf_shap_check(df: pd.DataFrame, feature_cols=None):
+    """Random Forest + SHAP (or fallback, if shap is unavailable in this
+    environment -- see importance_method in the returned dict) cross-check:
+    does Gap rank in the top-2 features? object_id is one-hot encoded as a
+    categorical feature, per PREREG.md. Pooled across all objects -- see
+    rf_shap_check_per_object() for the per-object variant."""
+    feature_cols = feature_cols or ["true_occlusion", "Gap_initial", "Gap_max", "clutter_count"]
+    X = df[feature_cols].copy()
+    X = pd.concat([X, pd.get_dummies(df["object_id"], prefix="obj")], axis=1)
+    y = df["failure"]
+    return _rf_importance_for_subset(X, y)
+
+
+def rf_shap_check_per_object(df: pd.DataFrame, feature_cols=None, min_trials: int = 15):
+    """Same cross-check, fit and ranked SEPARATELY within each object_id
+    subset (no cross-object dummy columns -- those would be constant within
+    a single-object subset and uninformative). Objects with fewer than
+    min_trials rows or only one failure-label class are reported as
+    'insufficient data', not silently skipped. Returns {object_id: result_dict}."""
+    feature_cols = feature_cols or ["true_occlusion", "Gap_initial", "Gap_max", "clutter_count"]
+    results = {}
+    for obj, sub in df.groupby("object_id"):
+        if len(sub) < min_trials or sub["failure"].nunique() < 2:
+            results[obj] = {
+                "rf_cv_auc_mean": None, "rf_cv_auc_std": None,
+                "shap_importance_ranked": None, "top2_features": None,
+                "importance_method": None,
+                "note": f"insufficient data (n={len(sub)}, "
+                        f"failure_classes={sub['failure'].nunique()}, need >= {min_trials} and 2 classes)",
+            }
+            continue
+        X = sub[feature_cols].copy()
+        y = sub["failure"]
+        results[obj] = _rf_importance_for_subset(X, y, min_class_count=2)
+    return results
 
 
 def per_object_descriptive_table(df: pd.DataFrame, gap_col: str = "Gap_initial"):

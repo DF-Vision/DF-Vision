@@ -375,3 +375,54 @@ time budget on this machine's CPU, this is logged as a blocker with the
 exact command and wall-clock time attempted, and criteria (a)-(c) and
 (e) (all fully achievable without a real training run) still stand as
 this task's minimum bar.
+
+---
+
+## C7 -- Mutation-test the guards (2026-09-21)
+
+### Targets (the 10 named in the task, mapped to file:test_file)
+
+1. Calibration solver + refusal rules -- `perception-calibration-gap/calibration/compute_extrinsic_calibration.py` / `tests/test_extrinsic_calibration.py`
+2. Lookup-table/out-of-reach logic -- `perception-calibration-gap/grasp/lookup_table_executor.py` (`nearest_bin`/IK-failure path) / `tests/test_grasp_lookup_table.py`
+3. Dry-run/--i-am-supervising guard -- same file (`execute_grasp_lookup_table`) / same test file
+4. Marker-size config read -- `perception-calibration-gap/calibration/capture_marker_points.py::parse_marker_sizes` / NEW `tests/test_marker_size_config.py` (no test existed -- built first, per rule 5's "write the missing test" discipline, since a mutation needs a test able to catch it)
+5. Template-CSV guard -- `perception-calibration-gap/hand_calc_validation.py::refuse_if_still_template` / `tests/test_hand_calc_validation.py` (positive-path test for a correctly-filled CSV ALREADY EXISTS -- `test_passes_once_notes_are_filled_in_for_real` -- confirmed by reading the file before assuming ledger item #7's gap was real; verified by mutation, not rebuilt)
+6. Stub-exclusion + Model D refusal -- `perception-calibration-gap/analysis/model_d.py` / `tests/test_model_d.py`
+7. Session scheduler -- `perception-calibration-gap/analysis/session_scheduler.py` / `tests/test_data_quality_and_scheduler.py`
+8. `data_quality_report.py` -- same file's `session_object_confounding_check`/`prg_stub_vs_real_counts` / same test file
+9. Controller-freeze check -- `data_quality_report.py::controller_freeze_check` / same test file
+10. Depth-unit guard -- `perception-calibration-gap/real_camera/depth_io.py` (this session's own C2 work) / `tests/test_replay_mode.py`
+
+### Method (fixed before running any mutation)
+
+Hand-rolled harness (`project_closure/scripts/mutation_test_harness.py`):
+apply ONE textual mutation to a target file, run that target's test file
+via `pytest`, record PASS (mutant SURVIVED -- a test gap) or FAIL (mutant
+KILLED), then `git checkout -- <file>` to revert exactly, and verify
+`git status` is clean before moving to the next mutation. At least 3
+mutations per target (flip a comparison, drop a check, swap a sign,
+off-by-one, remove a guard/NaN check -- matching the task's own examples),
+each a REALISTIC single-defect injection, not a contrived no-op. `mutmut`/
+`cosmic-ray` availability checked first; hand-rolled used instead per the
+task's own explicit fallback ("otherwise do it by hand with a script"),
+since 10 disparate single-file targets don't benefit much from a
+whole-repo mutation-testing framework's overhead versus a focused script.
+
+### Acceptance criteria
+
+1. At least 3 mutations attempted per target (30+ total).
+2. For every mutation: kill/survive result logged in a table (module,
+   mutation description, kill/survive, and for survivors, the new test
+   written to close the gap + re-mutation confirming the kill).
+3. Any SURVIVING mutant gets a new test written specifically to catch
+   it, then the SAME mutation is re-applied and re-tested to confirm the
+   new test now kills it (not just added and assumed to work).
+4. Working tree is `git status` clean after every single mutation
+   (verified by the harness itself, not just at the end).
+5. Final kill-rate table reported: X/Y mutations killed on first attempt,
+   Z test gaps found and closed, 100% kill rate after closing gaps (not
+   before -- an honest number, not a rounded-up one).
+6. `tests/test_marker_size_config.py` (new, for target 4) covers
+   `parse_marker_sizes`'s cm->m conversion and multi-pair parsing
+   correctly BEFORE any mutation is attempted against it (same
+   criteria-before-implementation discipline as every other task).

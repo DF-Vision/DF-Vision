@@ -70,3 +70,30 @@ recommendation -- flag for review.
 
 Not applied for the same reason as above — `SCHEMA.md ` is Person B's
 file, pending her review.
+
+## Addendum — 2026-09-21 (`project/overnight-hardening` session)
+
+`logger.py`'s `TrialRecord` (the real schema source of truth) was
+extended additively this session with 9 new Optional fields, all
+default `None`, `REQUIRED_FIELDS` unchanged, all prior self-tests
+verified still passing:
+
+```
+scene_condition: str | None       # "contact"/"support"/"separate"/"near_contact"/occlusion level
+repeat_id: int | None             # which repeat of this (object, condition) cell
+controller_git_hash: str | None   # git commit of the controller code active for this trial
+grasp_point_xyz_camera: list[float] | None   # [x,y,z], camera frame, meters
+grasp_point_xyz_robot: list[float] | None    # [x,y,z], robot base frame, meters
+pose_source: str | None            # "lookup_table" | "lookup_table_failed" | "ik"
+task_success: int | None           # 0/1, distinct from `failure`
+notes: str | None
+prg_model_version: str | None      # "legacy" | "v2" | "geometric_c1" | ... -- see the
+                                    # relation_model_version addendum above; this is the
+                                    # TRIAL-level equivalent (one value per trial, since a
+                                    # trial's prg_edges all come from the same config state)
+```
+
+Proposed `SCHEMA.md ` Section 1/3b text: add a row for each field above
+with the same phrasing style already used there. Not applied — `SCHEMA.md `
+is Person B's file, pending her review, same discipline as every prior
+addendum in this file.

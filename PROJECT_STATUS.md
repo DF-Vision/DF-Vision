@@ -484,3 +484,18 @@ baseline in `project_closure/LOG.md`'s C0 entry, re-checked in C10). No
 arm or motor code was executed; every grasp-facing test asserts the
 `MotorInterface` mock is called zero times in dry-run and
 `--i-am-supervising` was never passed.
+
+---
+
+## Note — 2026-09-27 (`project/final-integration` consolidation session)
+
+**This file's per-contribution status sections (§1, §7-10) are now
+superseded by `project_final/PROJECT_STATUS_FINAL.md`** — read that file
+first from now on for current status; it consolidates all 8 prior
+sessions' findings into one master table (C1-C5, C1-ext/C4-ext, Model D)
+with authoritative-document pointers. This file's history is NOT deleted
+or edited — every section above remains the accurate record of what each
+session found and when. See also `project_final/RESOLUTION_LOG.md` (every
+prior "needs a human decision" flag, resolved or explicitly left open),
+`project_final/PRG_SIGNAL_STATUS.md` (the full PRG chronology), and
+`project_final/HANDOFF.md` (this consolidation session's own handoff).

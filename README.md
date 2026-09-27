@@ -115,13 +115,39 @@ Grounded Spoken Explanation
 
 ## Current Status
 
-- ✅ Hardware Pipeline
-- ✅ Object Detection
-- ✅ Calibration Gap Computation
-- ✅ PRG Integration
-- ✅ Conformal Safety Gate
-- ✅ Voice Interaction
-- 🚧 Ongoing Development & Evaluation
+**Correction (2026-09-27, `fix/readme-status-correction`): the status
+list this section previously showed (dated 2026-07-30, this repo's first
+week) claimed "✅ PRG Integration," "✅ Hardware Pipeline," and
+"✅ Voice Interaction" as complete. None of that was accurate then and
+none of it is accurate now — corrected below rather than deleted, so
+this file doesn't silently go stale the same way twice.**
+
+This section no longer restates status inline — status changes too
+often and inline copies drift out of date (exactly what happened here).
+**For current, authoritative status, read
+`project_final/PROJECT_STATUS_FINAL.md` on the `project/final-integration`
+branch** (not present on this branch — this
+correction branch was created directly from the old `failure-calibration`
+branch, per this project's own discipline of never touching another
+branch's history; check out `project/final-integration` to read it). As
+of that document (2026-09-27):
+
+- **Software**: every planned analysis path (Gap-only C1/C4, the
+  now-retired PRG dual-signal extension, Model D) is built, tested, and
+  — where a safety/statistics guard exists — mutation-hardened. This
+  part is genuinely done.
+- **PRG dual-signal integration (C1-ext, C4-ext, Model D)**: NOT
+  complete, NOT working. Five sessions, three distinct algorithmic
+  designs, all failed decisively against pre-committed evaluation
+  criteria. Formally **retired** for this paper's submission (dated
+  amendment in `perception-calibration-gap/PREREG.md`); Gap-only is the
+  sole primary path.
+- **Hardware pipeline**: infrastructure (calibration solver, grasp
+  lookup table, YOLO training loop, Checkpoint 1 validation tooling) is
+  built and tested on synthetic data only. **Zero real trials have ever
+  been run.** Blocked on physical hardware access, not on more software.
+- **Voice interaction**: never started, per this project's own planning
+  documents.
 
 ---
 

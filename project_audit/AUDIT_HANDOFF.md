@@ -79,16 +79,19 @@ empty output — confirmed via git diff, not assumed.
 **2. `git diff project/closure..HEAD --stat`:**
 ```
 $ git diff project/closure..HEAD --stat
- project_audit/AUDIT_HANDOFF.md | ...
- project_audit/C4_AUDIT.md      | ...
- project_audit/C6_AUDIT.md      | ...
- 3 files changed, ... insertions(+)
+ project_audit/AUDIT_HANDOFF.md                     | 139 ++++++++++++
+ project_audit/C4_AUDIT.md                          | 167 +++++++++++++++
+ project_audit/C6_AUDIT.md                          | 233 +++++++++++++++++++++
+ project_audit/scripts/mock_data_generator_PREFIX_T7.py | 188 +++++++++++++++
+ project_audit/scripts/out_of_sample_check.py       |  80 +++++++
+ project_audit/scripts/paired_comparison.py         |  97 +++++++++
+ project_audit/scripts/prefix_c1_internals.py       |  52 +++++
+ 7 files changed, 956 insertions(+)
 ```
-(Exact line counts will appear once this file is committed alongside the
-other two — confirmed no other file appears in this diff at commit
-time, see the commit log for this branch.) `git status --porcelain`
-before this commit showed only `?? project_audit/` — no other file
-modified, added, or deleted anywhere else in the repo.
+Confirmed: only `project_audit/` files (the 3 writeups plus 4 supporting
+scripts used to generate this audit's own evidence, kept for
+reproducibility). No other file in the repo modified, added, or deleted.
+`git status --porcelain` before committing showed only `?? project_audit/`.
 
 **3. Full test suite:**
 ```

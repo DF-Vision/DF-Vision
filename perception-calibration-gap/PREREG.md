@@ -309,3 +309,131 @@ exchange, 2026-07-15) unless noted otherwise:
 - Daily integration ritual: 9:00-9:30 PM daily agreed, both rules confirmed
   (integration debt fixed next morning; interface changes require mutual
   agreement before either side edits code).
+
+
+## Amendment 2026-09-27 — Power analysis correction
+
+**This amendment supersedes, in place, the Section 4 statement that
+"estimated power at N=195 is approximately 0.79-0.80, meeting the
+target" (the "2x the conservative default" scenario). The original text
+above is left unedited, per this document's own rule (Section 7: "Never
+edit Sections 1-5 directly once committed") — this amendment is the
+authoritative correction going forward.**
+
+What Section 4 currently states (quoted verbatim):
+
+> **C1 (Gap_initial coefficient, Model B):** At the planned N (195) and
+> the conservative/realistic detector-noise assumption already used
+> elsewhere in this project (mock_data_generator.py's default noise
+> scales), estimated power is approximately 0.12-0.15 -- well below the
+> conventional 0.80 target. Achieving 0.80 power at this effect size
+> would require approximately 3,000+ trials, which is not feasible given
+> hardware and time constraints (Section 8, Cut Strategy). However, if
+> the true Gap effect is at least ~2x the conservative default (a real
+> possibility, not a guarantee, given the conservative default was
+> itself a guess), estimated power at N=195 is approximately 0.79-0.80,
+> meeting the target.
+
+What was found: `mock_data_generator.py` (the file this power estimate
+is explicitly based on) was modified exactly once since this document
+was written -- commit `0d74cd4` (2026-09-21, this project's `T7`
+null-data bugfix). That commit changed one line:
+```diff
+-noise_scale = OBJECT_DETECTOR_NOISE[obj] * gap_signal_multiplier
++noise_scale = OBJECT_DETECTOR_NOISE[obj]
+```
+This was a genuine, necessary bugfix: at `gap_signal_multiplier=0.0`
+(the "null" scenario), the OLD line zeroed BOTH the effect coefficient
+AND the measurement noise, producing a degenerate constant `Gap_initial`
+column. The fix was correct for that case.
+
+However, the same line change also altered every `gap_signal_multiplier
+!= 1.0` scenario, including the "2x" scenario the Section 4 passage above
+depends on. An audit (`project_audit/C6_AUDIT.md`, then
+`project_prereg_correction/COMMIT_DIAGNOSIS.md`) found:
+
+1. Reconstructing the pre-`0d74cd4` generator from git history and
+   re-running the power simulation at N=195, 2x reproduces the stated
+   0.79-0.80 exactly (measured: 0.825 in the audit's first check;
+   0.800-0.810 in reduced-scale, differently-seeded re-runs -- consistent,
+   not identical, as expected from Monte Carlo noise across different
+   seeds/rep-counts).
+2. The two changes bundled in `0d74cd4` are separable: a version that
+   fixes ONLY the null-case bug (special-casing `mult=0.0`) while leaving
+   every other multiplier's behavior exactly as it was before the fix
+   reproduces the same 0.79-0.80-ish number
+   (`project_prereg_correction/scripts/run_isolated_check.py`: N=195,
+   mult=2.0 -> power=0.800).
+3. But that reproduction is not evidence the pre-fix number was correct
+   -- it comes from a mechanism traced precisely: the pre-fix code's
+   `gap_signal_multiplier` simultaneously (a) scaled the failure-logit
+   coefficient AND (b) scaled `Gap_initial`'s own noise/variance upward.
+   Both effects independently inflate apparent statistical power.
+   `power_analysis_c1.py`'s own docstring -- written at the repo's
+   initial commit, ~7 weeks before `0d74cd4`, unmodified since --
+   explicitly states `gap_signal_multiplier` and the trial-count
+   `scale_factor` should be "varied independently," with the multiplier
+   representing effect-size uncertainty alone. The pre-fix coupling
+   contradicted this project's own older, documented design for what
+   this parameter means.
+4. A real-world noise-magnitude comparison (to settle which version is
+   "more realistic") could not be resolved -- the repo's only
+   literature-calibrated noise reference (Nguyen et al. 2012,
+   `retrain/scripts/noise_model.py`) calibrates raw depth-sensor noise in
+   meters, a different physical quantity than the unitless
+   visibility-fraction noise `mock_data_generator.py` actually uses. No
+   valid comparison exists in this repo.
+
+Verdict: the CURRENT (post-`0d74cd4`, decoupled) generator behavior is
+the methodologically correct one, consistent with this project's own
+earlier documented intent for this exact parameter. The "0.79-0.80 at
+2x" fallback was not a considered, validated estimate of a
+genuinely-more-optimistic-but-plausible scenario -- it was an artifact of
+a since-recognized coupling bug in the same code, and nobody re-checked
+this specific claim after the bug was fixed for an unrelated reason.
+
+Corrected power table (reduced-scale reproduction, n_reps=100 per cell,
+CURRENT/decoupled/correct generator; full commands and raw output:
+`project_prereg_correction/scripts/full_power_table.py`, reproducible):
+
+| N | 1x (nominal) | 2x | 3x |
+|---|---|---|---|
+| 90 | 0.040 | 0.150 | 0.330 |
+| 120 | 0.100 | 0.160 | 0.400 |
+| 180 | 0.060 | 0.310 | 0.600 |
+| 195 | 0.100 | 0.340 | 0.600 |
+
+Corrected statement for the "2x" fallback claim: under the current,
+correctly-fixed generator, a 2x effect gives approximately 0.31-0.34
+power at N=180-195, not 0.79-0.80. There is no multiplier in {1x, 2x,
+3x} at any tested N (90-195) that reaches the 0.80 target under the
+current generator except 3x at N>=180 (0.60, still short) -- no tested
+cell reaches 0.80 at all under the current, correct model within this
+range. `project_audit/C6_AUDIT.md` separately found (larger-scale,
+1000/300-repeat runs, wider multiplier sweep) that even N=1440 (16x the
+planned N) only reaches ~0.59 power at the nominal (1x) effect size.
+
+Remaining uncertainty: none on the central technical question above (the
+two changes are separable; the decoupled behavior matches this project's
+own older documented intent) -- this is not an ambiguous case requiring
+"both numbers as a range." The genuine remaining uncertainty this
+amendment cannot resolve for anyone: whether `b_gap=2.5` (or any
+multiple of it) is anywhere near the REAL Gap-failure effect size, since
+zero real trials exist. That uncertainty exists regardless of which
+noise model is used and is unaffected by this correction.
+
+Recommendation: keep `0d74cd4`'s noise-model change (the decoupling) --
+do not revert it. It is consistent with this project's own
+pre-existing, dated documentation of what `gap_signal_multiplier` should
+mean, and the pre-fix behavior's power numbers were inflated by a real,
+traced mechanism (conflated effect-size and measurement-noise scaling),
+not by a more-realistic noise assumption. The "Pre-registered stance on
+this uncertainty" paragraph in Section 4's original text should be read
+with the "meeting the target" framing removed, since no plausible tested
+scenario (1x-3x, N=90-195) currently meets it.
+
+**Decision (2026-09-27, Manasi/Krupa): the dual-signal PRG extension
+(C1-ext, C4-ext, Model D) is retired for this submission; see
+`project_final/PRG_SIGNAL_STATUS.md` for the full evidence trail. The
+primary submission path is Gap-only (C1, C4), consistent with this
+document's own pre-registered cut strategy.**

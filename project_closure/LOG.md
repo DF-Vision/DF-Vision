@@ -900,3 +900,113 @@ Full suite unaffected by this task (docs-only): `140 passed, 1 skipped`.
 propose-don't-edit-in-place discipline).
 
 ---
+
+## C10 — Verification
+
+### Full test run vs C0 baseline
+
+```
+$ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/ -v
+140 passed, 1 skipped, 304 warnings in ~50-60s
+```
+C0 baseline: `73 passed, 1 xfailed` (74 items). C10: `140 passed, 1
+skipped` (141 items) — net +67 items, verified by per-file collection
+count, not estimated: 9 brand-new test files (`test_replay_mode.py` 14,
+`test_rf_shap_check.py` 9, `test_c4_gap_estimator_scenes.py` 4,
+`test_yolo_pipeline.py` 15, `test_yolo_real_training.py` 4,
+`test_marker_size_config.py` 4, `test_c6_statistics.py` 8,
+`test_split_discipline.py` 4, `test_e2e_integration_rehearsal.py` 2 = 64
+items) + `test_geometric_prg_error_sanity.py` grew by 2 items (6→8,
+C4's two new blur/noise sensitivity tests) + `test_grasp_lookup_table.py`
+grew by 1 item (10→11, C7's boundary test) = 67. Separately, the one
+pre-existing C0 xfail (`test_c1_gap_estimate_on_clean_step_edge_KNOWN_BUG`)
+was RECATEGORIZED, not added: same test item, renamed, now asserts
+normally instead of `pytest.xfail()`, since C4 fixed the bug it
+documented — this explains xfailed going 1→0 without being counted in
+the +67 (it's a category change on an existing item, not a new one). The
+1 `skipped` (`test_rf_shap_check_real_shap_path`, one of the 9 new items
+in that file) is explained: skipped with an explicit reason
+(`shap unavailable in this environment: <exact traceback>`), verified
+passing separately in an isolated venv with real shap installed (C1's
+LOG entry). Zero unexplained failures, zero unexplained skips.
+
+### SHA256 of protected files
+
+```
+$ find . -iname "*.joblib" | sort | xargs sha256sum
+$ sha256sum integration/prg_config.json perception-calibration-gap/PREREG.md "SCHEMA.md " "INTERFACE.md "
+```
+All 13 hashes byte-identical to the C0 baseline (diffed programmatically,
+zero differences). `use_stub: true` untouched throughout.
+
+### `git diff <base>..HEAD --stat`
+
+```
+$ git diff project/overnight-hardening..HEAD --stat
+76 files changed, 5159 insertions(+), 103 deletions(-)
+```
+Every file is an intended change (new scripts/tests/fixtures under
+`project_closure/`, `perception-calibration-gap/{real_camera,yolo,analysis}/`,
+`tests/`, plus the 5 doc files C9 touched). No protected file, no stray
+artifact.
+
+### CRITERIA.md commit-order check
+
+```
+$ git log --oneline project/overnight-hardening..HEAD -- project_closure/CRITERIA.md
+$ git log --reverse --oneline project/overnight-hardening..HEAD
+```
+Confirmed for every task with a CRITERIA.md section (C2, C1, C4, C3, C7,
+C6, C8): the criteria commit precedes that task's implementation
+commit(s) in the log, with zero exceptions.
+
+### Fresh-clone reproduction
+
+```
+$ git clone /home/manasi/DF-Vision <tmpdir> && cd <tmpdir> && git checkout project/closure
+$ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest tests/ -q
+140 passed, 1 skipped   -- IDENTICAL to the working tree's count
+$ python3 perception-calibration-gap/daily_integration_check.py        # PASS
+$ python3 perception-calibration-gap/real_camera/capture_and_gap.py --replay perception-calibration-gap/real_camera/fixtures/replay_synthetic_v1   # 4/4 good + 4/4 correctly-flagged
+$ python3 perception-calibration-gap/e2e_integration_rehearsal_SYNTHETIC.py   # PASS, all 7 stages
+$ python3 -c "... run_mutation(MUTATIONS[0]) ..."   # KILLED, harness works standalone
+```
+All green from a clean clone at this exact commit — nothing depends on
+working-tree state left over from development.
+
+### Determinism
+
+- **Replay** (`capture_and_gap.py --replay`): two runs, field-for-field
+  diff excluding `timestamp_utc`/`stage_timings_ms` (wall-clock, per C2's
+  own addendum) — zero differences.
+- **C6 statistics**: `null_false_positive_rate`, `planted_recovery_by_effect_size`,
+  `conformal_coverage_spread` each called twice with the same seed —
+  identical results (including NaN-aware and array-equality checks).
+- **E2E rehearsal**: two runs, diffed — the only differences are (a) the
+  `tempfile.TemporaryDirectory()` path name (expected — a fresh random
+  directory every run, not a determinism defect: nothing about which
+  directory is used affects the computed values), and (b)
+  `stage_timings_ms`/`[timing_ms]` wall-clock values (expected, same
+  category as replay's). Every substantive value (Gap, coverage,
+  freeze-check verdicts, PRG stub status) is identical across runs.
+
+### `daily_integration_check.py`
+
+```
+=== Daily Integration Check: PASS ===
+```
+Green, as it was at C0 and after every subsequent task.
+
+### Ledger status
+
+`project_closure/LEDGER.md`: all 14 rows CLOSED except row #5 (C5,
+T6b/T6c) — pending, per the task's own stated priority order (C0, C2,
+C1, C4, C3, C7, C6, C8, C9-C11, **C5 last**). Addressed next, budget
+permitting; if not reached, closed as BLOCKED (deferred by design, not
+an oversight) in the final handoff.
+
+**C10 verification complete. No unexplained failures, no protected-file
+drift, no stray files, fresh-clone parity confirmed, determinism
+confirmed (modulo documented wall-clock/tempdir-name exceptions).**
+
+---

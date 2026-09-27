@@ -1,0 +1,93 @@
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+Building scene cache for 5 non-held-out worlds...
+[world1_baseline] Found camera 'depth_camera1' -> viewpoint 1, xyz=[ 0.0108857  -0.45        1.80089962]
+[world1_baseline] Found camera 'depth_camera2' -> viewpoint 2, xyz=[ 0.59984601 -0.55583333  1.5717566 ]
+[world1_baseline] Found camera 'depth_camera3' -> viewpoint 3, xyz=[0.0775     0.24368229 1.39773022]
+[world1_baseline] Found camera 'depth_camera4' -> viewpoint 4, xyz=[-0.54484601 -0.45583333  1.5717566 ]
+[world1_baseline] Found camera 'depth_camera5' -> viewpoint 5, xyz=[-0.0225     -1.25534895  1.39773022]
+[world1_baseline] Found camera 'depth_camera6' -> viewpoint 6, xyz=[ 0.23520024 -0.36884378  1.62771473]
+[world2_dense_clutter] Found camera 'depth_camera1' -> viewpoint 1, xyz=[ 0.04999982 -0.45        1.51999982]
+[world2_dense_clutter] Found camera 'depth_camera2' -> viewpoint 2, xyz=[ 0.63075716 -0.54659211  1.57516286]
+[world2_dense_clutter] Found camera 'depth_camera3' -> viewpoint 3, xyz=[0.10841116 0.25292351 1.40113648]
+[world2_dense_clutter] Found camera 'depth_camera4' -> viewpoint 4, xyz=[-0.51393485 -0.44659211  1.57516286]
+[world2_dense_clutter] Found camera 'depth_camera5' -> viewpoint 5, xyz=[ 0.00841116 -1.24610773  1.40113648]
+[world2_dense_clutter] Found camera 'depth_camera6' -> viewpoint 6, xyz=[ 0.26611139 -0.35960256  1.63112099]
+[world3_thin_objects] Found camera 'depth_camera1' -> viewpoint 1, xyz=[ 0.05000137 -0.45        1.78615391]
+[world3_thin_objects] Found camera 'depth_camera2' -> viewpoint 2, xyz=[ 0.54759934 -0.50104667  1.4915816 ]
+[world3_thin_objects] Found camera 'depth_camera3' -> viewpoint 3, xyz=[0.02525333 0.29846895 1.31755522]
+[world3_thin_objects] Found camera 'depth_camera4' -> viewpoint 4, xyz=[-0.59709267 -0.40104667  1.4915816 ]
+[world3_thin_objects] Found camera 'depth_camera5' -> viewpoint 5, xyz=[-0.07474667 -1.20056229  1.31755522]
+[world3_thin_objects] Found camera 'depth_camera6' -> viewpoint 6, xyz=[ 0.18295357 -0.31405711  1.54753973]
+[world4_support_scene] Found camera 'depth_camera1' -> viewpoint 1, xyz=[-0.04261466 -0.45        1.91862022]
+[world4_support_scene] Found camera 'depth_camera2' -> viewpoint 2, xyz=[ 0.52367934 -0.48866667  1.60654827]
+[world4_support_scene] Found camera 'depth_camera3' -> viewpoint 3, xyz=[1.33333333e-03 3.10848954e-01 1.43252188e+00]
+[world4_support_scene] Found camera 'depth_camera4' -> viewpoint 4, xyz=[-0.62101267 -0.38866667  1.60654827]
+[world4_support_scene] Found camera 'depth_camera5' -> viewpoint 5, xyz=[-0.09866667 -1.18818229  1.43252188]
+[world4_support_scene] Found camera 'depth_camera6' -> viewpoint 6, xyz=[ 0.15903357 -0.30167711  1.6625064 ]
+[world5_occlusion_scene] Found camera 'depth_camera1' -> viewpoint 1, xyz=[-0.01053046 -0.45        1.72412001]
+[world5_occlusion_scene] Found camera 'depth_camera2' -> viewpoint 2, xyz=[ 0.59062248 -0.53595882  1.57667572]
+[world5_occlusion_scene] Found camera 'depth_camera3' -> viewpoint 3, xyz=[0.06827647 0.2635568  1.40264933]
+[world5_occlusion_scene] Found camera 'depth_camera4' -> viewpoint 4, xyz=[-0.55406954 -0.43595882  1.57667572]
+[world5_occlusion_scene] Found camera 'depth_camera5' -> viewpoint 5, xyz=[-0.03172353 -1.23547444  1.40264933]
+[world5_occlusion_scene] Found camera 'depth_camera6' -> viewpoint 6, xyz=[ 0.22597671 -0.34896927  1.63263385]
+
+==============================================================================
+(a) Non-constant, in [0,1], deterministic
+==============================================================================
+C1: n=263, range=[0.0000,1.0000], unique=192, in_range=True, deterministic=True -> PASS
+C2: n=263, range=[0.0784,1.0000], unique=199, in_range=True, deterministic=True -> PASS
+C3: n=263, range=[0.0875,1.0000], unique=199, in_range=True, deterministic=True -> PASS
+
+==============================================================================
+(b) Sensitivity: Spearman rho > 0.6 with noise level AND edge-blend level, per world, >= 4 of 5 worlds
+==============================================================================
+C1 / world1_baseline: rho_noise=0.208, rho_blend=0.006
+C2 / world1_baseline: rho_noise=-0.025, rho_blend=0.239
+C3 / world1_baseline: rho_noise=-0.025, rho_blend=0.239
+C1 / world2_dense_clutter: rho_noise=0.051, rho_blend=-0.129
+C2 / world2_dense_clutter: rho_noise=0.208, rho_blend=0.400
+C3 / world2_dense_clutter: rho_noise=0.027, rho_blend=0.106
+C1 / world3_thin_objects: rho_noise=0.138, rho_blend=0.016
+C2 / world3_thin_objects: rho_noise=0.070, rho_blend=0.312
+C3 / world3_thin_objects: rho_noise=0.094, rho_blend=0.062
+C1 / world4_support_scene: rho_noise=0.175, rho_blend=-0.069
+C2 / world4_support_scene: rho_noise=-0.020, rho_blend=0.138
+C3 / world4_support_scene: rho_noise=0.023, rho_blend=0.026
+C1 / world5_occlusion_scene: rho_noise=0.034, rho_blend=-0.017
+C2 / world5_occlusion_scene: rho_noise=0.190, rho_blend=0.268
+C3 / world5_occlusion_scene: rho_noise=0.017, rho_blend=-0.021
+C1: noise rho>0.6 on 0/5 worlds, blend rho>0.6 on 0/5 worlds -> FAIL
+C2: noise rho>0.6 on 0/5 worlds, blend rho>0.6 on 0/5 worlds -> FAIL
+C3: noise rho>0.6 on 0/5 worlds, blend rho>0.6 on 0/5 worlds -> FAIL
+
+==============================================================================
+(c) Validity: AUROC > 0.70, CI lower bound > 0.55 vs |estimated_gap - true_gap| > 1cm
+==============================================================================
+n=262, wrong fraction=0.821
+C1: AUROC=0.2796, CI=[0.0802,0.3971] -> FAIL
+C2: AUROC=0.3896, CI=[0.2771,0.5123] -> FAIL
+C3: AUROC=0.2855, CI=[0.0863,0.3929] -> FAIL
+
+==============================================================================
+(d) Beats dumb baselines (constant, single-feature) by a margin whose CI excludes 0
+==============================================================================
+constant(0.5) baseline: AUROC=0.5000 (undefined/0.5 expected -- a constant score has no ranking power)
+single-feature baseline fit: boundary_sharpness 5th/95th percentile = [0.3299,1.7689] (fit on non-held-out worlds only)
+single-feature(boundary_sharpness) baseline: AUROC=0.3902
+C1: margin vs constant CI=[-0.4198,-0.1029] (no), margin vs single-feature CI=[-0.3966,-0.0062] (no)
+C2: margin vs constant CI=[-0.2229,0.0123] (no), margin vs single-feature CI=[-0.0023,0.0000] (no)
+C3: margin vs constant CI=[-0.4137,-0.1071] (no), margin vs single-feature CI=[-0.3914,-0.0255] (no)
+
+==============================================================================
+(e) Collinearity with true-occlusion proxy and object-camera distance (reporting only)
+==============================================================================
+C1: corr(distance) pearson=-0.143 spearman=-0.168; corr(mask_px, occlusion proxy) pearson=-0.078 spearman=-0.094 
+C2: corr(distance) pearson=-0.105 spearman=-0.079; corr(mask_px, occlusion proxy) pearson=0.191 spearman=0.148 
+C3: corr(distance) pearson=-0.209 spearman=-0.186; corr(mask_px, occlusion proxy) pearson=0.030 spearman=-0.032 
+
+==============================================================================
+SELECTION (per the pre-committed rule in explore/CRITERIA.md)
+==============================================================================
+Candidates passing (a) and (b): []
+NONE of C1/C2/C3 pass both (a) and (b) -- per the pre-committed rule, no candidate is selected. This is reported as a negative result.

@@ -1010,3 +1010,69 @@ drift, no stray files, fresh-clone parity confirmed, determinism
 confirmed (modulo documented wall-clock/tempdir-name exceptions).**
 
 ---
+
+## C5 — PRG changed-interface attempt, bounded (short, per the task's own instruction)
+
+Criteria pre-committed first (commit `91b81bc`).
+
+Built `explore/scripts/geometric_prg_error_neighbor_aware.py`: segments
+depth via discontinuity-only connected components (no YOLO/TSDF/Gap
+import — extended `check_structural_independence.py` to cover it,
+re-ran, PASS), identifies the touching/nearest neighbor by SMALLEST
+median interface depth-gap among touching candidates (not "most touching
+pixels," which — confirmed by direct debugging before running the real
+evaluation — wrongly picks a small target's surrounding background over
+its actual, real neighbor whenever background touches more of the
+perimeter). On 4 idealized synthetic scenes this genuinely works, exactly:
+clean step-edge (0.001m, true 0.001m), two-object-touching-with-background
+(0.001m, correctly ignoring the 1.6m background), separated-5cm
+(0.050m, true 0.050m), background-only (correctly falls back to 1.6m,
+no neighbor exists) — `tests/test_geometric_prg_error_neighbor_aware.py`,
+6/6 passing.
+
+**Evaluated against `explore/CRITERIA.md` on the 5 non-held-out worlds,
+stopping at the first failure per the task's own instruction:**
+criterion (a) PASSED (n=263, 28 distinct values, in range, deterministic)
+— genuinely better than needing to debug determinism/range issues.
+**Criterion (b) FAILED decisively: 0/5 worlds for both noise and blend
+sensitivity** (`explore/scripts/e5_evaluate_neighbor_aware_candidate.py`'s
+output, `project_closure/results/c5_neighbor_aware_eval_SIM_output.txt`)
+— unlike C1/C2/C3's mixed-sign failure, here rho is consistently
+NEGATIVE across all 5 worlds (-0.04 to -0.54), noted but not further
+diagnosed (short note, per the task's explicit instruction not to write
+a long report on a failing candidate). Per the pre-committed selection
+rule (must pass (a) AND (b)), **NOT selected. Held-out world
+(`world6_dense_mixed`) NOT touched.** `use_stub` stays `true`; no flip
+proposed (nothing passed to propose flipping).
+
+This is the fifth session, and third distinct design approach
+(classifier retrain, classifier-free ring-based, now depth-only
+connected-components), to produce a decisive negative result on this
+same PRG-signal validity/sensitivity gate — extending, not overturning,
+the project's established PRG history (`PREREG_AMENDMENTS_PROPOSED.md`
+item 5/6).
+
+Full suite after this task: `146 passed, 1 skipped` (was 140+1 skipped
+after C10 — +6 new tests, 0 regressions). `git diff` on protected files:
+empty. DA-V2 checkpoint check (per this task's own requirement):
+confirmed again this session, no checkpoint inside this repo; exists
+only outside it at `/home/manasi/bps-project/checkpoints/`, not used.
+
+Ledger item #5 → **CLOSED** (attempted, bounded, decisive negative
+result — not blocked, genuinely completed within the 1-attempt budget
+this design work took).
+
+**Also found and fixed while committing this task**: `.gitignore` has a
+`results/` pattern that silently excluded `project_closure/results/*`
+from every prior `git add project_closure/` this session — meaning
+`c4_e3_rerun_SIM_output.txt` (referenced as committed evidence in C4's
+own LOG entry and this handoff) was NEVER actually committed, despite
+the C4 commit message claiming to include it (confirmed via
+`git ls-tree -r bb6bf51 --name-only`, absent). Force-added both
+`c4_e3_rerun_SIM_output.txt` and this task's own
+`c5_neighbor_aware_eval_SIM_output.txt` with `git add -f` in this
+commit. Flagged here rather than silently corrected, since it means C4's
+own commit undercounted what it actually captured — the LOG text was
+accurate about the content, just not about it being committed until now.
+
+---

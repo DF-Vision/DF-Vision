@@ -378,6 +378,95 @@ this task's minimum bar.
 
 ---
 
+## C5 -- PRG changed-interface attempt, bounded (2026-09-21)
+
+Attempted AFTER C4 (per the task's explicit ordering). Lowest priority
+per the STOP CONDITIONS list -- attempted last, after C0-C11.
+
+### Design (fixed before implementation, before running)
+
+A NEW variant, `explore/scripts/geometric_prg_error_neighbor_aware.py`,
+behind a NEW config switch (`relation_classifier/prg_edge_error_config.json`'s
+existing switch mechanism, extended with a new mode value, default
+UNCHANGED/off) -- takes `(rgb, depth, target_bbox)`, same interface as
+C1/C2/C3, but internally:
+
+1. Segments the depth image into connected components using ONLY depth
+   discontinuities (Sobel gradient magnitude threshold -> smooth-region
+   mask -> `cv2.connectedComponents`) -- no YOLO/TSDF/Gap import, no
+   ground-truth object labels used by the candidate itself (only by the
+   EVALUATION harness, to compute the true gap it's scored against, per
+   the same discipline `explore/scripts/e3_evaluate_candidates.py` and
+   `oracle_geometry.py` already use).
+2. Identifies the "target" component as whichever depth-discontinuity
+   region has the most overlap with `target_bbox`'s interior.
+3. Identifies the "neighbor" component as whichever OTHER region shares
+   the most boundary-adjacent pixels with the target region (dilate the
+   target region by a few px, find which other region-labels it
+   touches; picks the one with the most touching pixels, not just the
+   first found) -- this is the concrete difference from C1/C2/C3, which
+   sample an OMNIDIRECTIONAL ring around the target's own bbox with no
+   knowledge of which specific direction a real neighbor lies (E3's own
+   diagnosed root cause of their failure). If no component touches the
+   target at all, the neighbor is the CLOSEST other region by minimum
+   pixel-space boundary distance (a "separated, not touching" case).
+4. `estimated_gap` = the minimum `|depth(target boundary pixel) -
+   depth(neighbor boundary pixel)|` over the touching (or nearest, if
+   not touching) boundary pixel pairs specifically between these two
+   IDENTIFIED regions -- not an omnidirectional ring.
+5. `score` (documented formula, in the module's own docstring) =
+   coefficient-of-variation-style UNCERTAINTY of that gap estimate:
+   `sigma_local / (sigma_local + SCALE_M)`, where `sigma_local` is the
+   std of the boundary pixel pairs' local gap values and `SCALE_M` is a
+   fixed, documented normalizing constant (2cm, matching
+   `CONTACT_THRESHOLD_M`'s existing convention) -- 0 when the boundary
+   interface is perfectly consistent (low noise/high confidence in the
+   estimate), approaching 1 as the estimate's own internal spread grows
+   relative to the interface scale. This is the ONLY formula tested,
+   fixed before running, not adjusted after seeing results (same
+   discipline as C1/C2/C3's own docstring commitment).
+
+### Acceptance criteria, evaluated IN ORDER on the 5 non-held-out worlds, stopping at the first failure (task's own explicit instruction)
+
+(a) non-constant, in [0,1], deterministic (>=3 distinct values).
+(b) Sensitivity: Spearman rho > 0.6 with injected noise/blur, on >=4/5
+worlds (same `noise_model.py` levels as C1/C2/C3's own evaluation).
+(c) Validity: AUROC > 0.70, bootstrap CI lower bound > 0.55 (2000
+resamples, grouped by world), for flagging scenes where
+`|estimated_gap - true_gap| > 1cm` (`oracle_geometry.py`'s true minimum
+3D gap, same `explore/data/oracle_features_SIM.csv` file C1/C2/C3 were
+scored against).
+(d) Beats constant(0.5) and single-feature (raw `boundary_sharpness`)
+baselines, paired bootstrap CI excluding 0.
+(e) Collinearity (reporting only, not a pass/fail gate): correlation
+with a true-occlusion proxy and camera distance; `|r| > 0.7` flagged as
+a Model D collinearity risk.
+
+**Selection rule** (fixed before running, only one variant is being
+tested this round so this is trivial but stated for completeness):
+there is exactly one candidate this session; it is "selected" only if
+it clears (a) AND (b), matching C1/C2/C3's own selection rule exactly.
+If selected, evaluated on `world6_dense_mixed` (held out) exactly once,
+same protocol as E3. If NOT selected (fails (a) or (b)), the held-out
+world is NOT touched, and this session stops with a SHORT failure note
+naming which criterion failed and the observed number -- per the task's
+own explicit instruction, not a long report.
+
+### Non-negotiables (unchanged from every prior PRG session)
+
+`integration/prg_config.json`'s `use_stub` stays `true` regardless of
+outcome -- even if this candidate passes every gate, this session
+proposes a flip (in a dated `*_PROPOSED.md` addendum) rather than
+applying it, per hard rule 3 and the task's own explicit instruction
+("If it passes: still leave use_stub true"). DA-V2/real-depth validity
+is explicitly UNTESTED and stated as such regardless of outcome (checked
+this session: no DA-V2 checkpoint exists inside this repo; checkpoints
+exist only outside it, at `/home/manasi/bps-project/checkpoints/`, not
+copied in or used, per this project's established discipline of not
+importing from outside the repo without review).
+
+---
+
 ## C7 -- Mutation-test the guards (2026-09-21)
 
 ### Targets (the 10 named in the task, mapped to file:test_file)

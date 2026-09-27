@@ -76,16 +76,16 @@ empty output — confirmed via git diff.
 **`git diff project/audit..HEAD --stat`:**
 ```
 $ git diff project/audit..HEAD --stat
- project_prereg_correction/COMMIT_DIAGNOSIS.md          | ...
- project_prereg_correction/HANDOFF.md                   | ...
- project_prereg_correction/PREREG_AMENDMENT_DRAFT.md    | ...
- project_prereg_correction/scripts/full_power_table.py  | ...
- project_prereg_correction/scripts/run_isolated_check.py| ...
- 5 files changed, ... insertions(+)
+ project_prereg_correction/COMMIT_DIAGNOSIS.md       | 200 +++++++++++++++++++++
+ project_prereg_correction/HANDOFF.md                |  96 ++++++++++
+ project_prereg_correction/PREREG_AMENDMENT_DRAFT.md | 147 +++++++++++++++
+ project_prereg_correction/scripts/full_power_table.py  |  77 ++++++++
+ project_prereg_correction/scripts/run_isolated_check.py|  85 +++++++++
+ 5 files changed, 605 insertions(+)
 ```
 Only `project_prereg_correction/` files — no other file in the repo
-touched. `PREREG.md`/`SCHEMA.md `/`INTERFACE.md ` confirmed untouched
-(separately, via `git diff --stat` on those three paths: empty).
+touched. `PREREG.md`/`SCHEMA.md `/`INTERFACE.md ` confirmed untouched via
+`git diff --stat` on those three exact paths: empty output.
 
 **Full test suite:**
 ```

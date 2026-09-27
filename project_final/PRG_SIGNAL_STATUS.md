@@ -119,8 +119,16 @@ a fourth attempt at one of the existing three) that clears the SAME
 sensitivity and validity gates every prior attempt failed — nothing in
 this repo currently suggests what that design would look like, since the
 diagnosed failure mode (background/direction-ambiguity contamination) has
-now defeated two different mitigation strategies. Whether to keep
-attempting new designs or formally retire this contribution is an open
-scoping decision for Manasi/Krupa (`project_final/RESOLUTION_LOG.md` row
-11) — this document lays out the complete evidence trail for that
-decision, it does not make it.
+now defeated two different mitigation strategies.
+
+**Decision (2026-09-27, Manasi/Krupa): the dual-signal PRG extension
+(C1-ext, C4-ext, Model D) is formally RETIRED for this paper submission,
+regardless of Track C's outcome. Gap-only (C1, C4) is the confirmed sole
+primary path.** Track C (real-depth capture per
+`explore/REAL_CAPTURE_PROTOCOL_V2.md`) is still worth running once real
+captures exist — but framed as confirmatory/appendix material documenting
+a rigorous negative result, not as a blocking dependency for the paper
+and not as grounds to attempt a 4th PRG design regardless of what it
+shows. Recorded in `perception-calibration-gap/PREREG.md`'s
+`## Amendment 2026-09-27 — Power analysis correction` section and
+`project_final/RESOLUTION_LOG.md` row 11.

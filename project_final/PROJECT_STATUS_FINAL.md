@@ -24,6 +24,21 @@ Conformal Failure Gate, **C5** = Active Mitigation via TSDF Re-Fusion.
 | **C1-ext / C4-ext** (dual-signal Gap+PRG extensions) | **DEAD-END-CONFIRMED** (for every design tried; real-depth testing remains technically untried) | 5 sessions, 3 distinct design approaches (trained classifier, ring-based classifier-free ×3, depth-only connected-components classifier-free), ALL failed decisively against pre-committed, never-loosened gates — on SIMULATION data alone, before hardware would even be reached. The one thing that COULD still change this (real DA-V2/camera depth, never tested) is laid out precisely in `PRG_SIGNAL_STATUS.md`'s closing paragraph and `MASTER_HARDWARE_CHECKLIST.md`'s Track C — but every existing design is confirmed dead in its current form. | `project_final/PRG_SIGNAL_STATUS.md` (full 7-point history) |
 | **Model D** (combined two-signal model) | **BLOCKED** (structurally, by design, on both C1-ext/C4-ext AND real trial data) | Fully built and tested (`model_d.py`, 11/11 tests) but refuses to run unless explicitly enabled AND fed real (non-stub) PRG rows — neither condition is met, and `use_stub=true` stays true (this consolidation does not change that, per the absolute gate). Not reachable until C1-ext/C4-ext produces a working signal, which per the row above is currently a confirmed dead end. | `perception-calibration-gap/analysis/model_d.py`, `project_final/PRG_SIGNAL_STATUS.md` |
 
+## Addendum — 2026-09-27 (`project/closure-actions`)
+
+**Decision (2026-09-27, Manasi/Krupa): PRG dual-signal extension is
+formally retired for this paper submission regardless of Track C's
+outcome. Gap-only (C1, C4) is the confirmed sole primary path. Track C's
+real-depth capture, if and when run, is documented as
+confirmatory/appendix material only.** This does not change the C1-ext/
+C4-ext or Model D rows above (they remain accurate technical
+descriptions of what was tried and why it's dead/blocked) — it resolves
+the SCOPING question the table's own text left open (`PRG_SIGNAL_STATUS.md`'s
+prior closing paragraph, and `RESOLUTION_LOG.md` row 11). Decision also
+recorded in `perception-calibration-gap/PREREG.md`'s
+`## Amendment 2026-09-27 — Power analysis correction` section and in
+`PRG_SIGNAL_STATUS.md`'s closing paragraph.
+
 ## What "BLOCKED-ON-HARDWARE" means precisely, for every C1-C5 row above
 
 The CODE is done: built, tested, mutation-hardened where a guard exists

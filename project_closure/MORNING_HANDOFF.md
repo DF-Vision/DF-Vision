@@ -13,7 +13,7 @@ or flagged, and prove the existing guards actually work.
 | 2 | `rf_shap_check()` / broken shap | **CLOSED** | `analysis_c1.py` guarded import + fallback, `tests/test_rf_shap_check.py` 8/9 (+1 skip, verified in isolated venv) |
 | 3 | YOLO pipeline verification | **CLOSED** | `perception-calibration-gap/yolo/`, `tests/test_yolo_pipeline.py` 15/15, `tests/test_yolo_real_training.py` 4/4 |
 | 4 | C1 gap estimator returns 0.0 | **CLOSED** | `explore/scripts/geometric_prg_error.py`, `tests/test_geometric_prg_error_sanity.py`, `tests/test_c4_gap_estimator_scenes.py` — fixed, but see §3 verdict below |
-| 5 | T6b/T6c changed-interface PRG attempt | **See below** — attempted after this handoff was drafted; check `project_closure/LEDGER.md` row 5 for the final status word (CLOSED or BLOCKED) since this file may have been written before or after that attempt concluded |
+| 5 | T6b/T6c changed-interface PRG attempt | **CLOSED** | `explore/scripts/geometric_prg_error_neighbor_aware.py`, 6/6 idealized-scene tests; evaluated against `explore/CRITERIA.md`, decisive negative (fails sensitivity, 0/5 worlds) — see §3b below |
 | 6 | Null FPR re-establishment | **CLOSED** | `project_closure/scripts/c6_statistics_SYNTHETIC_output.txt`, 1000/500×3/100+ repeats |
 | 7 | `hand_calc_validation.py` positive-path test | **CLOSED** (already existed from a prior session, confirmed via mutation, not rebuilt) | `tests/test_hand_calc_validation.py::test_passes_once_notes_are_filled_in_for_real` |
 | 8 | Other-branch commits, human merge decision needed | **CLOSED** (left untouched, as instructed) | `git branch -a` unchanged |
@@ -37,7 +37,9 @@ this session's scope.
 | C9 Schema/doc closure | DONE | LOG C9 entry, 5 doc files |
 | C10 Verification | DONE | LOG C10 entry |
 | C11 Handoff | DONE | this file |
-| C5 PRG changed-interface attempt | See `project_closure/LEDGER.md` row 5 / `LOG.md`'s C5 entry if present — lowest priority per the task's own STOP CONDITIONS ordering, attempted last, budget permitting |
+| C5 PRG changed-interface attempt | DONE — decisive negative | LOG C5 entry, 6 tests + `c5_neighbor_aware_eval_SIM_output.txt` |
+
+**All C0-C11 and C5 tasks completed this session; every ledger row is CLOSED (`project_closure/LEDGER.md`, zero open rows).**
 
 ## 3. C4 verdict, in three sentences
 
@@ -53,6 +55,24 @@ identical to before. This confirms the zero-return bug and the
 E3-diagnosed omnidirectional background-contamination mechanism are
 DISTINCT root causes, and fixing the first did not fix (and by one
 metric, worsened) the second.
+
+### 3b. C5 verdict, in three sentences
+
+A new, differently-designed classifier-free candidate (depth-only
+connected-components neighbor identification, picking the adjacent
+region with the smallest interface depth-gap rather than the one
+touching the most perimeter) was built specifically to fix E3's
+diagnosed background-contamination mechanism, and it genuinely works on
+4 idealized synthetic scenes where C1/C2/C3 do not. Evaluated against
+the same pre-committed `explore/CRITERIA.md` gates on the same 5
+non-held-out worlds, it still fails decisively at the sensitivity
+criterion (0/5 worlds, consistently negative correlation with injected
+noise/blur) — genuinely different in idealized cases, but not different
+enough on real multi-object scenes to pass. This is the fifth session
+and third distinct design approach to reach the same decisive negative
+outcome, which meaningfully strengthens (not just repeats) the case that
+this feature set/depth quality, not any one specific algorithm, is the
+limiting factor.
 
 ## 4. Mutation kill-rate table
 
@@ -109,9 +129,11 @@ paper claim can be.
   project-local venv (not the default interpreter) — confirms the
   fallback logic is sound and the real path works when available, but
   the DEFAULT interpreter here still runs the fallback, not real SHAP.
-- **C5 (T6b/T6c changed-interface PRG attempt)** — see `LEDGER.md` row 5
-  for final disposition; may not have been reached if budget ran out
-  first, per the task's explicit lowest-priority ordering.
+- **C5's neighbor-aware candidate's noise/blur sensitivity failure
+  mechanism** — the consistently negative correlation (vs C1/C2/C3's
+  mixed-sign near-zero) was observed but not diagnosed, per this task's
+  own instruction to stop at the first failure with a short note rather
+  than a long investigation.
 - **The mock generator's assumed effect size itself** (`b_gap=2.5`) is
   a modeling choice, not measured from real data — C6's underpowering
   finding is conditional on that assumption being in the right
@@ -150,6 +172,7 @@ git log --oneline project/overnight-hardening..HEAD
 git diff project/overnight-hardening..HEAD --stat -- '*.joblib' integration/prg_config.json perception-calibration-gap/PREREG.md "SCHEMA.md " "INTERFACE.md "
 python3 project_closure/scripts/c7_run_mutations.py     # re-run mutation testing (~1-2 min)
 python3 project_closure/scripts/c6_statistics_SYNTHETIC.py   # re-run full-scale statistics (~90s)
+python3 explore/scripts/e5_evaluate_neighbor_aware_candidate.py   # re-run C5's PRG candidate evaluation
 python3 perception-calibration-gap/e2e_integration_rehearsal_SYNTHETIC.py
 ```
 
@@ -175,6 +198,7 @@ Two independent tracks, neither blocking the other:
 | `rf_shap_check()` works (real SHAP or a labeled fallback) and ranks the planted Gap feature top-2, pooled and per-object | `tests/test_rf_shap_check.py`, `c1_shap_check_SYNTHETIC_output.txt` |
 | C1's gap estimator recovers the true gap on 4 idealized synthetic scenes | `tests/test_geometric_prg_error_sanity.py`, `tests/test_c4_gap_estimator_scenes.py` |
 | Re-running `explore/CRITERIA.md` unchanged after the C4 fix still shows a decisive negative result on real scenes | `project_closure/results/c4_e3_rerun_SIM_output.txt` |
+| A depth-only, connected-components PRG neighbor-localization variant works on idealized scenes but still fails the real-scene sensitivity gate (0/5 worlds) | `tests/test_geometric_prg_error_neighbor_aware.py`, `project_closure/results/c5_neighbor_aware_eval_SIM_output.txt` |
 | YOLO training loop mechanics work (loss decreases, checkpoints save/reload/predict) | `tests/test_yolo_real_training.py`, real 2-epoch run |
 | Auto-labeler recovers known boxes within 1px; class index is a single source of truth; train/val split is session-grouped | `tests/test_yolo_pipeline.py` |
 | All 10 named guards have mutation-tested, non-vacuous test coverage | `project_closure/LOG.md`'s C7 entry, 30/30 kill rate |
@@ -207,8 +231,13 @@ training run that actually decreases loss).
 Traced and fixed the root cause of the geometric gap estimator returning
 exactly 0.0 on clean synthetic edges — but re-running the pre-committed
 evaluation criteria shows this does NOT rescue the PRG signal on real
-scenes; if anything it's slightly worse by one metric. The classifier-free
-PRG path remains a decisive negative result across five sessions now.
+scenes; if anything it's slightly worse by one metric. Also built and
+tested a third, differently-designed PRG candidate (depth-only
+connected-components neighbor identification, aimed directly at the
+diagnosed background-contamination mechanism) — it genuinely works on
+idealized scenes but still fails the same real-scene sensitivity gate.
+The classifier-free PRG path remains a decisive negative result across
+five sessions and three distinct design approaches now.
 
 Mutation-tested all 10 named safety/statistics guards (30 injected bugs,
 100% caught after fixing one real test gap) — this is now real evidence

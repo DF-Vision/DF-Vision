@@ -301,3 +301,39 @@ Restated as a pointer only (see items 3-4 above for the full detail,
 `project_closure/LEDGER.md` ledger item #8 for this session's explicit
 choice not to touch it): three documents still disagree (5 objects /
 5-with-swap / 3 objects) as of this session's end. Not resolved.
+
+### 9. PRG history, item 6 above, extended with a 5th session's attempt (C5)
+
+> ## Amendment — 2026-09-21 (proposed, pending your review)
+>
+> **A depth-only, connected-components neighbor-localization variant
+> (T6b) also fails decisively — third distinct design approach, same
+> outcome**
+>
+> This session (C5) built and tested a new classifier-free candidate
+> that identifies the target's real neighbor via depth-discontinuity
+> connected components (picking whichever adjacent region has the
+> smallest interface depth-gap, not simply whichever touches the most
+> perimeter — a fix aimed directly at E3's diagnosed background-
+> contamination mechanism). It genuinely works on 4 idealized synthetic
+> scenes (exact recovery on a clean edge, a touching pair with
+> background present, a 5cm-separated pair, and a background-only
+> scene). Evaluated against `explore/CRITERIA.md`'s pre-committed
+> criteria on the 5 non-held-out worlds: criterion (a) passes; criterion
+> (b) (sensitivity) fails decisively, 0/5 worlds, both noise and blend
+> (unlike C1/C2/C3's mixed-sign near-zero rho, here rho is consistently
+> negative, -0.04 to -0.54 — noted, not further diagnosed, per this
+> task's own instruction to stop at the first failure with a short
+> note). Not selected. Held-out world untouched. `use_stub` remains
+> `true`. Full detail: `project_closure/LOG.md`'s C5 entry,
+> `project_closure/results/c5_neighbor_aware_eval_SIM_output.txt`.
+>
+> This is the fifth session and third distinct design approach (trained
+> classifier, classifier-free ring-based, now classifier-free
+> connected-components-based) producing a decisive negative result on
+> essentially the same underlying gate. The evidence continues to weigh
+> toward retiring further PRG-signal design attempts as a contribution
+> path, though this session does not make that call for you.
+>
+> - [ ] Acknowledge the extended (5-session) PRG history including C5
+>       (date: ______)

@@ -37,6 +37,7 @@ PRG_SIDE_FILES = [
     PROJECT_ROOT / "relation_classifier" / "scripts" / "compute_prg_edge_error.py",
     PROJECT_ROOT / "relation_classifier" / "scripts" / "build_prg.py",
     PROJECT_ROOT / "explore" / "scripts" / "geometric_prg_error.py",
+    PROJECT_ROOT / "explore" / "scripts" / "geometric_prg_error_neighbor_aware.py",  # C5, project/closure session
 ]
 
 FORBIDDEN_PATH_MARKERS = ["perception-calibration-gap", "yolo", "tsdf_fusion",
